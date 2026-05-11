@@ -20,6 +20,7 @@ import {
   ProjectForm,
   projectToFormInitial,
 } from '../../_components/ProjectForm'
+import { NarrativeButton } from './NarrativeButton'
 
 export interface ProjectDetailProps {
   project: Project
@@ -165,6 +166,8 @@ export function ProjectDetail({
         </Button>
         <Button onClick={() => setEditing(true)}>Edit</Button>
       </div>
+
+      <NarrativeButton projectId={project.id} projectName={project.name} />
     </div>
   )
 }

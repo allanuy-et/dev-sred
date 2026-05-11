@@ -9,7 +9,7 @@ section is maintained by the `prompts-curator` agent and is what we'll discuss W
 
 ## Curated highlights
 
-_Phase 1 — backend + frontend agents, build-error triage, code review._
+_Phases 1–3 — parallel agents, build-error triage, code review, cross-phase security catch._
 _For the pre-hook planning arc, see [`prompts-planning.md`](./prompts-planning.md)._
 
 ---
@@ -26,15 +26,15 @@ _For the pre-hook planning arc, see [`prompts-planning.md`](./prompts-planning.m
 
 > *"You're importing a module that depends on `next/headers`. This API is only available in Server Components [...] Import traces: Client Component Browser: ./app/src/lib/api.ts [...] ./app/src/app/login/page.tsx"*
 
-**Technique:** The full Next.js build output — including the import trace — was pasted raw. The import chain (`login/page.tsx` → `api.ts` → `next/headers`) is what made the root cause unambiguous. Paraphrasing "there's a next/headers error" would have left the trace hidden and likely produced a surface-level fix; the trace made the structural split (`api.ts` / `api.server.ts` / `api.client.ts`) the obvious and correct answer.
+**Technique:** The full Next.js build output — including the import trace — was pasted raw. The import chain (`login/page.tsx` → `api.ts` → `next/headers`) is what made the root cause unambiguous; the trace pointed directly at the structural split (`api.ts` / `api.server.ts` / `api.client.ts`) as the only correct fix.
 
 ---
 
 ### 3. `[planning]` Parallel agent spawn as a forcing function for tight contracts
 
-> *(Phase 1 spawn — see raw log task notifications at 12:27 and 12:29)*
+> *(Phase 1 spawn — raw log task notifications at 12:27 and 12:29)*
 
-**Technique:** Spawning backend and frontend agents in parallel meant each had to be given a complete, self-contained brief up front — you can't iterate with a parallel agent the way you can in a single conversation. The constraint forced the API contract to be written out before either agent touched code, which is why the shared types in `@sred/shared` existed before the frontend tried to consume them.
+**Technique:** Spawning backend and frontend agents in parallel meant each had to be given a complete, self-contained brief up front — you can't iterate with a parallel agent mid-task. The constraint forced the API contract into `@sred/shared` *before* either agent touched code, which is why the shared types existed before the frontend tried to consume them.
 
 ---
 
@@ -43,7 +43,7 @@ _For the pre-hook planning arc, see [`prompts-planning.md`](./prompts-planning.m
 > *(Code-reviewer finding — raw log task notification at 12:40)*
 > *"The fallback ids `'seed-employee-scott'` and `'seed-project-rd'` are NOT valid UUIDs. The backend's `isUuid` regex [...] will reject any POST/PATCH that uses them with HTTP 400 [...] the `if (!res) return FALLBACK` branch [...] makes the form render but every submission silently 400s."*
 
-**Technique:** The code-reviewer agent was given the diff and the backend's own validation rules in scope — so it could cross-reference the frontend's fallback ids against the backend's UUID guard, a check no single-agent pass would have caught. The "silently 400s" framing identified not just a bug but the failure mode visible to the demo audience.
+**Technique:** The reviewer was scoped to the diff *and* the backend's own validation rules — so it could cross-reference the frontend's fallback ids against the UUID guard, a check no single-agent pass would have made. The "silently 400s" framing names the failure mode visible to the demo audience, not just the bug.
 
 ---
 
@@ -52,7 +52,7 @@ _For the pre-hook planning arc, see [`prompts-planning.md`](./prompts-planning.m
 > *(Code-reviewer finding — raw log task notification at 12:40)*
 > *"The dashboard re-declares `ActivityKind = 'labour' | 'expense' | 'project' | 'employee'` [which] diverges from the shared `RecentActivityKind = 'labour' | 'project'`. A judge asking 'where do your shared types live?' will see this immediately."*
 
-**Technique:** The reviewer was primed to evaluate for *judging criteria*, not just correctness — so it framed the divergence as a demo-day liability ("A judge asking...") rather than a lint warning. This dual framing (bug + presentation risk) makes the fix obviously high-priority.
+**Technique:** The reviewer was primed to evaluate for judging criteria, not just correctness — so it framed the divergence as a demo-day liability ("A judge asking...") rather than a lint warning. Dual framing (bug + presentation risk) makes the fix obviously high-priority.
 
 ---
 
@@ -60,7 +60,43 @@ _For the pre-hook planning arc, see [`prompts-planning.md`](./prompts-planning.m
 
 > *"ok good to go now. what is next in our plan?"*
 
-**Technique:** After a restart, a two-word check-in ("good to go") plus a plan-anchored question put the plan file back in the driver's seat instead of relying on conversation memory. The question is almost trivially short, but it routes everything through the written plan rather than re-summarizing context from scratch.
+**Technique:** After a restart, a two-word check-in plus a plan-anchored question put the plan file back in the driver's seat instead of relying on conversation memory. Almost trivially short, but it routes everything through the written spec rather than re-summarizing context from scratch.
+
+---
+
+### 7. `[fought back]` Phase 3 agent surfaced a pre-existing cross-tenant leak — and refused to touch it
+
+> *(Phase 3 backend agent — raw log task notification at 13:04)*
+> *"`labour.ts` itself is not company-scoped today. I noticed this while pattern-matching but intentionally did NOT touch it (hard rule #9: don't break Phase 1/2 routes). Flagging in case you want a follow-up PR."*
+
+**Technique:** The Phase 3 expenses agent was written with correct company-scoping from the start — and that contrast made the labour gap visible when the agent read both files side by side. A single-phase review would never have had this cross-reference. The agent's self-restraint ("I did NOT touch it") also prevented a silent scope creep that could have broken Phase 1 tests.
+
+---
+
+### 8. `[worked]` Phase 2 reviewer returned zero must-fixes — the tighter contract paid off
+
+> *(Code-reviewer finding — raw log task notification at 12:55)*
+> *"Must fix before commit: None. SQL is parameterized end-to-end [...] every `:id` endpoint enforces `company_id` scoping, `requireAuth` is mounted via `router.use(requireAuth)` on both new routers."*
+
+**Technique:** Phase 1 had four must-fix items. Phase 2 had zero. The difference: the Phase 2 spawn included explicit contract details (scoping behavior, 404-not-403, 409 on email collision) that the Phase 1 spawn left implicit. Spelling out invariants in the brief rather than in post-review feedback is demonstrably faster.
+
+---
+
+### 9. `[fought back]` Reviewer caught silent data-loss on inactive manager in project edit
+
+> *(Phase 2 code-reviewer finding — raw log task notification at 12:55)*
+> *"if a project's currently-assigned manager [...] has been deactivated, the dropdown won't include them, so the form silently drops a valid existing assignment on save (the `value=""` falls through to `— Unassigned —` and the PATCH body sends `projectManagerId: null`)."*
+
+**Technique:** The reviewer was given both the frontend form logic and the backend's `?status=active` default in scope simultaneously — the bug only exists at their intersection. Neither file alone would have revealed it. This is the same cross-file pattern that caught the Phase 1 UUID bug, now applied to a subtler data-loss scenario.
+
+---
+
+### 10. `[worked]` Server/client boundary enforced by module placement, not linting
+
+> *(Phase 2 frontend agent — raw log task notification at 12:49)*
+> *"`parseStatusFilter` lives in `app/src/lib/status-filter.ts` as a pure module (no `'use client'`, no React), so Server Components can import it without dragging in client runtime. `StatusFilter.tsx` re-exports the type for client-side ergonomics — fine."*
+
+**Technique:** Instead of hoping a linter catches the boundary violation, the agent separated the pure parsing logic from the React component at the file level. The placement *is* the enforcement — no annotation or rule needed. The Phase 2 reviewer called this out as a "defensible" pattern, confirming the approach in one pass.
 
 ## Raw log
 

@@ -9,6 +9,7 @@ A rebuild of the Precision SR&ED Manager prototype for a one-day coder challenge
 - **Database:** Postgres (Vercel Postgres in prod; local Postgres for dev)
 - **Auth:** JWT in an httpOnly cookie
 - **Monorepo:** Yarn 4 workspaces — `/app`, `/api`, `/shared`
+- **AI:** Anthropic SDK — "Generate SR&ED narrative" button on each project drafts a paragraph from labour-entry notes (requires `ANTHROPIC_API_KEY`)
 
 ## Live demo
 
@@ -35,6 +36,8 @@ yarn dev                   # starts /app on :3000 and /api on :4000
 ```
 
 Open <http://localhost:3000> and log in. To stop and wipe the DB: `docker compose down -v`.
+
+To try the **SR&ED narrative** feature, set `ANTHROPIC_API_KEY` in `.env` (uncomment the line in `.env.example`) and restart the API. Without the key, the rest of the app works normally; the narrative button just returns a 503.
 
 ## Project layout
 
