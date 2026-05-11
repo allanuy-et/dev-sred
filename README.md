@@ -27,7 +27,7 @@ cd sred-manager
 
 corepack enable              # activates the Yarn 4.1.0 pinned in package.json
 
-docker compose up -d         # starts Postgres on :5432
+docker compose up -d --wait  # starts Postgres on :5432 and waits for it to be healthy
 
 cp .env.example .env         # defaults match the docker-compose Postgres
 

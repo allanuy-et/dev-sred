@@ -20,3 +20,6 @@ dist/
 
 # User-uploaded labour/expense attachments (path from UPLOADS_DIR in .env)
 /api/uploads/
+
+# Claude Code local per-machine settings
+.claude/settings.local.json
