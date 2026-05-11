@@ -1,0 +1,17 @@
+{
+  "name": "sred-manager",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "yarn@4.1.0",
+  "workspaces": [
+    "app",
+    "api",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "yarn workspaces foreach -p -i -A --include app --include api run dev",
+    "build": "yarn workspaces foreach -t -A run build",
+    "typecheck": "yarn workspaces foreach --worktree --no-private -A run typecheck",
+    "db:setup": "yarn workspace @sred/api db:setup"
+  }
+}
