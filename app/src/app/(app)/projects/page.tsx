@@ -8,6 +8,8 @@ import type {
 
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
+import { ListLayout } from '@/components/ListLayout'
+import { SearchBar } from '@/components/SearchBar'
 import { StatusFilter } from '@/components/StatusFilter'
 import {
   EmptyTableState,
@@ -31,58 +33,98 @@ function managerName(user: User | undefined): string {
   return `${user.firstName} ${user.lastName}`
 }
 
+type TypeFilter = 'all' | 'sred' | 'internal'
+function parseTypeFilter(raw: string | undefined): TypeFilter {
+  if (raw === 'sred' || raw === 'internal') return raw
+  return 'all'
+}
+
 export default async function ProjectsListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>
+  searchParams: Promise<{ status?: string; type?: string; q?: string }>
 }) {
-  const { status: rawStatus } = await searchParams
+  const {
+    status: rawStatus,
+    type: rawType,
+    q: rawQ,
+  } = await searchParams
   const status = parseStatusFilter(rawStatus)
+  const typeFilter = parseTypeFilter(rawType)
+  const q = typeof rawQ === 'string' ? rawQ : ''
 
-  const [{ projects }, { employees }, currentUser] = await Promise.all([
-    serverApi<ProjectListResponse>(`/projects?status=${status}`),
-    // Employees are needed to render the Manager column. Default = active only,
-    // which is fine — we just need a lookup map for IDs that appear on rows.
+  const params = new URLSearchParams({ status })
+  if (q.trim().length >= 2) params.set('q', q.trim())
+  // Project-type filter is applied client-side because the backend list
+  // endpoint doesn't take a `?type=` filter yet (and we don't need to add
+  // one — the data set is small enough that filtering after fetch is fine).
+
+  const [{ projects: allProjects }, { employees }, currentUser] = await Promise.all([
+    serverApi<ProjectListResponse>(`/projects?${params.toString()}`),
     serverApi<EmployeeListResponse>('/employees?status=all'),
     getCurrentUser(),
   ])
 
-  // Layout already gates; this protects TS + races.
   if (!currentUser) return null
   const tz = currentUser.timezone
   const locale = getIntlLocale(currentUser.language)
 
+  const projects =
+    typeFilter === 'all'
+      ? allProjects
+      : allProjects.filter((p) => p.type === typeFilter)
+
   const employeeById = new Map(employees.map((e) => [e.id, e]))
 
   return (
-    <div className="space-y-12">
-      <header className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-semibold tracking-tight">Projects</h1>
-          <p className="mt-2 text-sm text-text-muted">
-            {projects.length}{' '}
-            {projects.length === 1 ? 'project' : 'projects'} shown.
-          </p>
+    <ListLayout
+      title="Projects"
+      subtitle={
+        <>
+          {projects.length} {projects.length === 1 ? 'project' : 'projects'}
+          {q ? <> matching “{q}”</> : null}
+        </>
+      }
+      filters={
+        <div className="space-y-5">
+          <FilterGroup label="Status">
+            <StatusFilter value={status} />
+          </FilterGroup>
+          <FilterGroup label="Type">
+            <TypeFilterLinks current={typeFilter} status={status} q={q} />
+          </FilterGroup>
         </div>
-        <div className="flex items-center gap-3">
-          <StatusFilter value={status} />
+      }
+      toolbar={
+        <>
+          <div className="w-full sm:max-w-md">
+            <SearchBar
+              initialValue={q}
+              placeholder="Search by name or description…"
+              ariaLabel="Search projects"
+            />
+          </div>
           <Link href="/projects/new">
             <Button>+ Add Project</Button>
           </Link>
-        </div>
-      </header>
-
+        </>
+      }
+    >
       <Card>
         {projects.length === 0 ? (
           <EmptyTableState>
-            No projects match this filter.{' '}
-            <Link
-              href="/projects/new"
-              className="font-medium text-accent hover:underline"
-            >
-              Add one
-            </Link>{' '}
-            to get started.
+            {q
+              ? <>No projects match this search.</>
+              : <>
+                  No projects match these filters.{' '}
+                  <Link
+                    href="/projects/new"
+                    className="font-medium text-accent hover:underline"
+                  >
+                    Add one
+                  </Link>{' '}
+                  to get started.
+                </>}
           </EmptyTableState>
         ) : (
           <Table>
@@ -133,6 +175,68 @@ export default async function ProjectsListPage({
           </Table>
         )}
       </Card>
+    </ListLayout>
+  )
+}
+
+function FilterGroup({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+        {label}
+      </p>
+      {children}
+    </div>
+  )
+}
+
+function TypeFilterLinks({
+  current,
+  status,
+  q,
+}: {
+  current: TypeFilter
+  status: 'active' | 'inactive' | 'all'
+  q: string
+}) {
+  const options: Array<{ value: TypeFilter; label: string }> = [
+    { value: 'all', label: 'All' },
+    { value: 'sred', label: 'SR&ED' },
+    { value: 'internal', label: 'Internal' },
+  ]
+  function hrefFor(value: TypeFilter): string {
+    const params = new URLSearchParams()
+    if (status !== 'active') params.set('status', status)
+    if (q.trim().length >= 2) params.set('q', q.trim())
+    if (value !== 'all') params.set('type', value)
+    const qs = params.toString()
+    return qs ? `/projects?${qs}` : '/projects'
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      {options.map((opt) => {
+        const active = opt.value === current
+        return (
+          <Link
+            key={opt.value}
+            href={hrefFor(opt.value)}
+            className={`block rounded-md px-2 py-1.5 text-sm ${
+              active
+                ? 'bg-accent-soft text-accent font-medium'
+                : 'text-text-muted hover:bg-surface-hover hover:text-text'
+            }`}
+            aria-current={active ? 'page' : undefined}
+          >
+            {opt.label}
+          </Link>
+        )
+      })}
     </div>
   )
 }

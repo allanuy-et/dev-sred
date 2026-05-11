@@ -5,6 +5,9 @@ import type { EmployeeListResponse } from '@sred/shared'
 import { Badge } from '@/components/Badge'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
+import { ListLayout } from '@/components/ListLayout'
+import { SearchBar } from '@/components/SearchBar'
+import { StatusFilter } from '@/components/StatusFilter'
 import {
   EmptyTableState,
   TBody,
@@ -15,7 +18,6 @@ import {
   TRLink,
   Table,
 } from '@/components/Table'
-import { StatusFilter } from '@/components/StatusFilter'
 import { serverApi } from '@/lib/api.server'
 import { ACCESS_LEVEL_LABELS } from '@/lib/employee-labels'
 import { parseStatusFilter } from '@/lib/status-filter'
@@ -23,44 +25,65 @@ import { parseStatusFilter } from '@/lib/status-filter'
 export default async function EmployeesListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>
+  searchParams: Promise<{ status?: string; q?: string }>
 }) {
-  const { status: rawStatus } = await searchParams
+  const { status: rawStatus, q: rawQ } = await searchParams
   const status = parseStatusFilter(rawStatus)
+  const q = typeof rawQ === 'string' ? rawQ : ''
 
+  const params = new URLSearchParams({ status })
+  if (q.trim().length >= 2) params.set('q', q.trim())
   const { employees } = await serverApi<EmployeeListResponse>(
-    `/employees?status=${status}`,
+    `/employees?${params.toString()}`,
   )
 
   return (
-    <div className="space-y-12">
-      <header className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-semibold tracking-tight">Employees</h1>
-          <p className="mt-2 text-sm text-text-muted">
-            {employees.length}{' '}
-            {employees.length === 1 ? 'employee' : 'employees'} shown.
-          </p>
+    <ListLayout
+      title="Employees"
+      subtitle={
+        <>
+          {employees.length}{' '}
+          {employees.length === 1 ? 'employee' : 'employees'}
+          {q ? <> matching “{q}”</> : null}
+        </>
+      }
+      filters={
+        <div className="space-y-5">
+          <FilterGroup label="Status">
+            <StatusFilter value={status} />
+          </FilterGroup>
         </div>
-        <div className="flex items-center gap-3">
-          <StatusFilter value={status} />
+      }
+      toolbar={
+        <>
+          <div className="w-full sm:max-w-md">
+            <SearchBar
+              initialValue={q}
+              placeholder="Search by name, email, or role…"
+              ariaLabel="Search employees"
+            />
+          </div>
           <Link href="/employees/new">
             <Button>+ Add Employee</Button>
           </Link>
-        </div>
-      </header>
-
+        </>
+      }
+    >
       <Card>
         {employees.length === 0 ? (
           <EmptyTableState>
-            No employees match this filter.{' '}
-            <Link
-              href="/employees/new"
-              className="font-medium text-accent hover:underline"
-            >
-              Add one
-            </Link>{' '}
-            to get started.
+            {q
+              ? <>No employees match this search.</>
+              : <>
+                  No employees match this filter.{' '}
+                  <Link
+                    href="/employees/new"
+                    className="font-medium text-accent hover:underline"
+                  >
+                    Add one
+                  </Link>{' '}
+                  to get started.
+                </>}
           </EmptyTableState>
         ) : (
           <Table>
@@ -103,6 +126,23 @@ export default async function EmployeesListPage({
           </Table>
         )}
       </Card>
+    </ListLayout>
+  )
+}
+
+function FilterGroup({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+        {label}
+      </p>
+      {children}
     </div>
   )
 }

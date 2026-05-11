@@ -56,6 +56,11 @@ function isNonNegativeInteger(v: unknown): v is number {
   return isFiniteNumber(v) && Number.isInteger(v) && v >= 0
 }
 
+// Escape ILIKE wildcards so user input can't act as wildcards.
+function escapeIlikeWildcards(input: string): string {
+  return input.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+}
+
 // --- Row shape + mapper ---
 
 interface UserRow {
@@ -148,11 +153,26 @@ router.get('/', async (req, res, next) => {
       statusClause = ` AND u.status = $${params.length}`
     }
 
+    // ?q= free-text search: ignore silently if missing / <2 chars after trim.
+    let qClause = ''
+    if (typeof req.query.q === 'string') {
+      const trimmed = req.query.q.trim()
+      if (trimmed.length >= 2) {
+        params.push(`%${escapeIlikeWildcards(trimmed)}%`)
+        const idx = params.length
+        qClause =
+          ` AND (u.first_name ILIKE $${idx}` +
+          ` OR u.last_name ILIKE $${idx}` +
+          ` OR u.email ILIKE $${idx}` +
+          ` OR COALESCE(u.role, '') ILIKE $${idx})`
+      }
+    }
+
     const result = await query<UserRow>(
       `SELECT ${USER_SELECT}
        FROM users u
        JOIN users me ON me.id = $1
-       WHERE u.company_id = me.company_id${statusClause}
+       WHERE u.company_id = me.company_id${statusClause}${qClause}
        ORDER BY u.last_name, u.first_name`,
       params
     )

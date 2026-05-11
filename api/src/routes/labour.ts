@@ -49,6 +49,11 @@ function isValidHours(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 24
 }
 
+// Escape ILIKE wildcards so user input can't act as wildcards.
+function escapeIlikeWildcards(input: string): string {
+  return input.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+}
+
 // --- Row mappers ---
 
 interface LabourRow {
@@ -155,6 +160,14 @@ router.get('/', async (req, res, next) => {
       if (!isUuid(employeeId)) return res.status(400).json({ error: 'Invalid `employeeId`' })
       params.push(employeeId)
       where.push(`l.employee_id = $${params.length}`)
+    }
+    // ?q= free-text search on notes: ignore silently if missing / <2 chars after trim.
+    if (typeof req.query.q === 'string') {
+      const trimmed = req.query.q.trim()
+      if (trimmed.length >= 2) {
+        params.push(`%${escapeIlikeWildcards(trimmed)}%`)
+        where.push(`COALESCE(l.notes, '') ILIKE $${params.length}`)
+      }
     }
 
     const whereSql = `WHERE ${where.join(' AND ')}`

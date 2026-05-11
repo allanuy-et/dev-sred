@@ -4,6 +4,9 @@ import type { ExpenseListResponse } from '@sred/shared'
 
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
+import { DateRangeFilter } from '@/components/DateRangeFilter'
+import { ListLayout } from '@/components/ListLayout'
+import { SearchBar } from '@/components/SearchBar'
 import {
   EmptyTableState,
   TBody,
@@ -20,9 +23,29 @@ import { EXPENSE_TYPE_LABELS } from '@/lib/expense-labels'
 import { formatCurrency, formatDate } from '@/lib/format'
 import { getIntlLocale } from '@/lib/i18n'
 
-export default async function ExpensesListPage() {
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
+function safeIsoDate(raw: string | undefined): string {
+  return typeof raw === 'string' && ISO_DATE_RE.test(raw) ? raw : ''
+}
+
+export default async function ExpensesListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; from?: string; to?: string }>
+}) {
+  const { q: rawQ, from: rawFrom, to: rawTo } = await searchParams
+  const q = typeof rawQ === 'string' ? rawQ : ''
+  const from = safeIsoDate(rawFrom)
+  const to = safeIsoDate(rawTo)
+
+  const params = new URLSearchParams({ limit: '50' })
+  if (q.trim().length >= 2) params.set('q', q.trim())
+  if (from) params.set('from', from)
+  if (to) params.set('to', to)
+
   const [{ entries, total }, currentUser] = await Promise.all([
-    serverApi<ExpenseListResponse>('/expenses?limit=50'),
+    serverApi<ExpenseListResponse>(`/expenses?${params.toString()}`),
     getCurrentUser(),
   ])
 
@@ -31,24 +54,46 @@ export default async function ExpensesListPage() {
   const locale = getIntlLocale(currentUser.language)
 
   return (
-    <div className="space-y-12">
-      <header className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-semibold tracking-tight">Expenses</h1>
-          <p className="mt-2 text-sm text-text-muted">
-            {total} {total === 1 ? 'entry' : 'entries'} recorded.
-          </p>
+    <ListLayout
+      title="Expenses"
+      subtitle={
+        <>
+          {total} {total === 1 ? 'entry' : 'entries'}
+          {q ? <> matching “{q}”</> : null}
+          {from || to ? <> in range</> : null}
+        </>
+      }
+      filters={
+        <div className="space-y-5">
+          <FilterGroup label="Date range">
+            <DateRangeFilter initialFrom={from} initialTo={to} />
+          </FilterGroup>
         </div>
-        <Link href="/expenses/new">
-          <Button>+ Add Expense</Button>
-        </Link>
-      </header>
-
+      }
+      toolbar={
+        <>
+          <div className="w-full sm:max-w-md">
+            <SearchBar
+              initialValue={q}
+              placeholder="Search notes or PO number…"
+              ariaLabel="Search expenses"
+            />
+          </div>
+          <Link href="/expenses/new">
+            <Button>+ Add Expense</Button>
+          </Link>
+        </>
+      }
+    >
       <Card>
         {entries.length === 0 ? (
           <EmptyTableState>
-            No expenses yet. Click <strong>Add Expense</strong> to log your
-            first one.
+            {q || from || to
+              ? <>No expenses match these filters.</>
+              : <>
+                  No expenses yet. Click <strong>+ Add Expense</strong> to log
+                  your first one.
+                </>}
           </EmptyTableState>
         ) : (
           <Table>
@@ -88,6 +133,23 @@ export default async function ExpensesListPage() {
           </Table>
         )}
       </Card>
+    </ListLayout>
+  )
+}
+
+function FilterGroup({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+        {label}
+      </p>
+      {children}
     </div>
   )
 }

@@ -771,3 +771,8 @@ Let's update the dashboard screen and instead instead of showing a bunch of tile
 
 ### 2026-05-11T14:47:33Z
 Let's update the dashboard screen and instead instead of showing a bunch of tile and the list, let's make it more visually appealing. lets plan this
+
+### 2026-05-11T15:10:39Z
+Let's update how the table looks like. Let's occupy the entire width of the screen. And then have the filters on the left side section.Use a card styling to separate the sections.
+
+And have the quick actions on top of the list. Also have a search bar.

@@ -36,6 +36,11 @@ function isNonEmptyString(v: unknown): v is string {
   return typeof v === 'string' && v.trim().length > 0
 }
 
+// Escape ILIKE wildcards so user input can't act as wildcards.
+function escapeIlikeWildcards(input: string): string {
+  return input.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+}
+
 // --- Row shape + mapper ---
 
 interface ProjectRow {
@@ -126,11 +131,22 @@ router.get('/', async (req, res, next) => {
       statusClause = ` AND p.status = $${params.length}`
     }
 
+    // ?q= free-text search: ignore silently if missing / <2 chars after trim.
+    let qClause = ''
+    if (typeof req.query.q === 'string') {
+      const trimmed = req.query.q.trim()
+      if (trimmed.length >= 2) {
+        params.push(`%${escapeIlikeWildcards(trimmed)}%`)
+        const idx = params.length
+        qClause = ` AND (p.name ILIKE $${idx} OR COALESCE(p.description, '') ILIKE $${idx})`
+      }
+    }
+
     const result = await query<ProjectRow>(
       `SELECT ${PROJECT_SELECT}
        FROM projects p
        JOIN users me ON me.id = $1
-       WHERE p.company_id = me.company_id${statusClause}
+       WHERE p.company_id = me.company_id${statusClause}${qClause}
        ORDER BY p.name`,
       params
     )
