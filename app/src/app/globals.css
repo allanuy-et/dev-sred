@@ -52,3 +52,14 @@ body {
   color: var(--text);
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  html,
+  body {
+    background: #ffffff;
+    color: #000000;
+  }
+}

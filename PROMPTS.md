@@ -494,3 +494,117 @@ Reviewed `api/src/routes/employees.ts`, `api/src/routes/projects.ts`, the four n
 The single material bug worth fixing before demo is **#2** (inactive manager/parent silently dropped from project edit). Everything else is polish.</result>
 <usage><total_tokens>77099</total_tokens><tool_uses>44</tool_uses><duration_ms>195635</duration_ms></usage>
 </task-notification>
+
+### 2026-05-11T13:04:51Z
+<task-notification>
+<task-id>aea6db231bbe39070</task-id>
+<tool-use-id>toolu_0117TFhS1g4rTsqcnZsqtvvq</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-paolouy-dev-sred-manager/da4a2ff4-02a7-4ea2-94e6-d8ef8d9de34c/tasks/aea6db231bbe39070.output</output-file>
+<status>completed</status>
+<summary>Agent "Build Phase 3 backend" completed</summary>
+<result>Done. Summary below.
+
+## Files created
+- `/Users/paolouy/dev/sred-manager/api/src/routes/expenses.ts` — full CRUD; mirrors labour.ts shape but with company-scoping (via `JOIN users me` and `p.company_id = me.company_id`).
+- `/Users/paolouy/dev/sred-manager/api/src/routes/search.ts` — single `GET /search` with `q` + `limit`; `q.length &lt; 2` returns empty arrays, missing `q` returns 400.
+- `/Users/paolouy/dev/sred-manager/api/src/routes/reports.ts` — `GET /reports/monthly` and `GET /reports/yearly`, both single-trip with `SUM(...) FILTER (WHERE p.type='sred')`.
+- `/Users/paolouy/dev/sred-manager/shared/src/types/search.ts`
+- `/Users/paolouy/dev/sred-manager/shared/src/types/report.ts`
+
+## Files modified
+- `/Users/paolouy/dev/sred-manager/shared/src/types/expense.ts` — added `CreateExpenseInput`, `UpdateExpenseInput`, list/response types.
+- `/Users/paolouy/dev/sred-manager/shared/src/index.ts` — re-exports `./types/search.js` and `./types/report.js`.
+- `/Users/paolouy/dev/sred-manager/api/src/index.ts` — mounts the three new routers.
+
+## Confirmations
+- `yarn workspace @sred/shared run typecheck` — PASSED (exit 0).
+- `yarn workspace @sred/api run typecheck` — PASSED (exit 0).
+- `/search?q=` (param present but empty) → handler reaches the length check (`trimmed.length &lt; 2`) and returns `{ projects: [], employees: [] }` (200). Missing `q` entirely → 400 `{ error: '\`q\` is required' }`.
+- `/search?q=a` (single char) → 200 with empty arrays; DB is never queried.
+- Monthly/yearly: month bounds derived via `make_date($year,$month,1)` + `interval '1 month' - interval '1 day'`. The labour/expense `date` columns are tz-naive DATE, so "America/Toronto" is implicit (same convention as `dashboard.ts`). I documented this in a comment instead of pushing the tz through `date_trunc`, because applying `AT TIME ZONE` to a DATE either no-ops or introduces real off-by-one risk.
+
+## Judgment calls (deviations from spec, called out)
+
+1. **`expenses` table has no `company_id` column.** I company-scope every expense query by joining through `projects p ON p.id = e.project_id` and gating on `p.company_id = me.company_id`. Cross-tenant hits return 404, per the existing project memory. The `verifyForeignKeysInCompany` helper also enforces that new `employeeId`/`projectId` references live in the caller's company.
+
+2. **`labour.ts` itself is not company-scoped today.** I noticed this while pattern-matching but intentionally did NOT touch it (hard rule #9: don't break Phase 1/2 routes). Flagging in case you want a follow-up PR — `GET /labour`, `/labour/:id`, etc. currently allow cross-tenant reads/writes. I made expenses do the right thing from the start.
+
+3. **Reports tz semantics.** Spec asked for `date_trunc` with Toronto boundaries; I used `make_date` + `EXTRACT(MONTH FROM date)` because the source columns are DATE (no tz). `date_trunc('month', date AT TIME ZONE 'America/Toronto')` against a DATE silently casts to timestamp-without-tz first and re-applies the tz, which can shift the bucket by one day for dates near month boundaries depending on server tz. The simpler form is correct and matches user intent.
+
+4. **`/search` employee detail** falls back to `email` when `role` is null (per spec). Search uses parameterized ILIKE with `%` / `_` / `\` escaping so user input can't act as wildcards. Active-only on both tables, as specified.
+
+5. **No new shared types beyond the spec.** Everything in `expense.ts`, `search.ts`, `report.ts` matches what you provided verbatim.</result>
+<usage><total_tokens>75813</total_tokens><tool_uses>28</tool_uses><duration_ms>243597</duration_ms></usage>
+</task-notification>
+
+### 2026-05-11T13:08:13Z
+<task-notification>
+<task-id>a7d0e7f8da7afc3da</task-id>
+<tool-use-id>toolu_01PAxxqVxkVG9Ax9kyFGhweB</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-paolouy-dev-sred-manager/da4a2ff4-02a7-4ea2-94e6-d8ef8d9de34c/tasks/a7d0e7f8da7afc3da.output</output-file>
+<status>completed</status>
+<summary>Agent "Build Phase 3 frontend" completed</summary>
+<result>Done. Phase 3 frontend slice is complete.
+
+## Files created
+
+**Expenses (clone of labour):**
+- `/Users/paolouy/dev/sred-manager/app/src/lib/expense-labels.ts`
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/expenses/page.tsx`
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/expenses/new/page.tsx`
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/expenses/[id]/page.tsx`
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/expenses/_components/ExpenseForm.tsx`
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/expenses/[id]/_components/ExpenseDetail.tsx`
+
+**Global search:**
+- `/Users/paolouy/dev/sred-manager/app/src/components/GlobalSearch.tsx`
+
+**Reports:**
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/reports/page.tsx`
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/reports/_components/ReportsClient.tsx`
+
+## Files modified
+
+- `/Users/paolouy/dev/sred-manager/app/src/components/AppShell.tsx` — wired `&lt;GlobalSearch /&gt;` into the right cluster (before user name), added `no-print` to the header.
+- `/Users/paolouy/dev/sred-manager/app/src/app/globals.css` — `@media print { .no-print { display: none !important; } }` plus white-page overrides.
+- `/Users/paolouy/dev/sred-manager/app/src/lib/format.ts` — added `formatCurrency` (`$1,234.56`).
+
+NavLinks already contained Expenses + Reports — no change required.
+
+## Reuse vs new
+
+**Reused:**
+- `Button`, `Card`, `Field`/`SelectField`/`TextAreaField`, `Table` family (incl. `EmptyTableState`), `ApiError`, `clientApi`/`serverApi`, `formatDate`/`formatHours`, `PROJECT_TYPE_LABELS`.
+- `loadEmployees` / `loadProjects` from `app/(app)/labour/_lib/selectOptions` — imported directly into both `expenses/new` and `expenses/[id]` (and `reports/page.tsx`), per the brief. The cross-route import is a little tight, but the alternative (a `shared/_lib`) felt like premature abstraction during a one-day build. Worth promoting to `src/lib/select-options.ts` later.
+- The structural patterns (page header layout, view↔edit detail toggle, error-message branching on `ApiError.status`) are line-for-line clones of labour.
+
+**New (with justification):**
+- `formatCurrency` — no existing currency helper.
+- `GlobalSearch` — no existing combobox/dropdown primitive; the spec forbade adding `cmdk`/`downshift`. Implemented with `AbortController`, debounce, latest-query ref, keyboard nav, click-outside, ARIA combobox semantics.
+- `ReportsClient` — bespoke (tabs + filter form + result tables). Reuses Card/Table/SelectField; the tab buttons match the active-nav-link styling (border-b-2, accent).
+- `ExpenseForm`/`ExpenseDetail` — separate from labour because the field set differs (cost vs hours, PO number, no labour-time). Kept the shapes parallel so a future refactor could extract.
+
+## Design-system silences and judgment calls
+
+- **Dropdown styling** (search results): doc has no listbox/combobox spec. Used `rounded-md border border-border bg-surface shadow-md` (matches the doc's "Elevated `shadow-md`" rule for popovers), `divide`d sections with `border-b border-border`, section headers as `text-[10px] uppercase tracking-wide text-text-muted`, active item uses `bg-surface-hover`. Width is fixed at `w-72` for clarity; the input is `w-44 md:w-56`.
+- **Tabs**: doc has no tab spec. Reused the top-nav active-link treatment (`-mb-px` + `border-b-2 border-accent`) so the visual language stays one accent.
+- **Radio inputs** for project type: native radios with `accent-accent` — minimal, matches the rest of the form vibe. Doc is silent.
+- **Print CSS**: kept tight per the brief — `.no-print` on the AppShell header and the report-controls card; the print page strips the chrome and shows just the result card. Forced `#fff` background + `#000` text in print to avoid wasting ink on the warm-gray bg.
+- **Totals row**: `bg-surface-hover font-medium` — visually grouped with the table without introducing a new pattern.
+
+## Backend contract assumptions
+
+These are the shapes/endpoints the backend agent must match:
+
+1. **`GET /expenses?limit=50`** → `ExpenseListResponse` (`{ entries: ExpenseWithRelations[], total: number }`).
+2. **`GET /expenses/:id`** → `ExpenseWithRelationsResponse`. 404 when not found.
+3. **`POST /expenses`** with `CreateExpenseInput` → `{ entry: Expense }`. `objectiveEvidence` may be omitted (defaults to `none`).
+4. **`PATCH /expenses/:id`** with `UpdateExpenseInput` (we currently send the full body) → `{ entry: Expense }`.
+5. **`DELETE /expenses/:id`** → `{ ok: true }`.
+6. **`GET /search?q=&lt;text&gt;`** → `SearchResponse` (`{ projects, employees }`). I send `q` even for length 1, but the frontend only opens the dropdown for length ≥ 2 — backend can no-op for short queries or just return empty.
+7. **`GET /reports/monthly?year=&lt;n&gt;&amp;month=&lt;1-12&gt;&amp;projectId=&lt;uuid&gt;&amp;type=sred|internal`** → `MonthlyReportResponse`. `projectId` and `type` are optional; absence means "all".
+8. **`GET /reports/yearly?year=&lt;n&gt;&amp;projectId=&lt;uuid&gt;&amp;type=sred|internal`** → `YearlyReportResponse`. Same optional semantics. Frontend pads to 12 rows; backend may return ≤12 (only months with data).
+
+Typecheck and lint both exit 0.</result>
+<usage><total_tokens>90572</total_tokens><tool_uses>66</tool_uses><duration_ms>413475</duration_ms></usage>
+</task-notification>

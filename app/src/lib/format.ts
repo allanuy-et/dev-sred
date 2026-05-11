@@ -39,3 +39,17 @@ export function formatHours(value: number | null | undefined): string {
     maximumFractionDigits: 2,
   })} h`
 }
+
+/**
+ * Format a monetary value as `$1,234.56`. Always shows two decimal places.
+ * Returns `—` for null/undefined. Uses USD shape but with no explicit currency
+ * code — the dollar sign is generic enough for CA + US, and avoids the API
+ * having to choose.
+ */
+export function formatCurrency(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '—'
+  return `$${value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`
+}

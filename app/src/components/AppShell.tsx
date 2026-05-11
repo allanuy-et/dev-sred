@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 
 import type { SessionUser } from '@/lib/auth'
 
+import { GlobalSearch } from './GlobalSearch'
 import { LogoutButton } from './LogoutButton'
 import { NavLinks } from './NavLinks'
 
@@ -13,7 +14,7 @@ export interface AppShellProps {
 export function AppShell({ user, children }: AppShellProps) {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-10 h-14 border-b border-border bg-surface">
+      <header className="no-print sticky top-0 z-10 h-14 border-b border-border bg-surface">
         <div className="mx-auto flex h-full w-full max-w-[1120px] items-center justify-between gap-6 px-6">
           <div className="flex h-full items-center gap-8">
             <span className="text-sm font-semibold tracking-tight">
@@ -22,6 +23,7 @@ export function AppShell({ user, children }: AppShellProps) {
             <NavLinks />
           </div>
           <div className="flex items-center gap-3">
+            <GlobalSearch />
             <span className="text-sm text-text-muted">
               {user.firstName} {user.lastName}
             </span>

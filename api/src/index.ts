@@ -6,6 +6,9 @@ import labourRouter from './routes/labour.js'
 import dashboardRouter from './routes/dashboard.js'
 import employeesRouter from './routes/employees.js'
 import projectsRouter from './routes/projects.js'
+import expensesRouter from './routes/expenses.js'
+import searchRouter from './routes/search.js'
+import reportsRouter from './routes/reports.js'
 
 const app = express()
 const PORT = Number(process.env.PORT ?? 4000)
@@ -28,6 +31,9 @@ app.use('/labour', labourRouter)
 app.use('/dashboard', dashboardRouter)
 app.use('/employees', employeesRouter)
 app.use('/projects', projectsRouter)
+app.use('/expenses', expensesRouter)
+app.use('/search', searchRouter)
+app.use('/reports', reportsRouter)
 
 // Central error handler — keeps individual handlers thin. Logs server-side,
 // returns a generic 500 to clients so we don't leak internals.

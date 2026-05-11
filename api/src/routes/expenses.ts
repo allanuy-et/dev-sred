@@ -1,10 +1,11 @@
 import { Router } from 'express'
 import type {
-  LabourEntry,
-  LabourEntryWithRelations,
-  LabourTime,
-  LabourType,
-  ObjectiveEvidence,
+  CreateExpenseInput,
+  Expense,
+  ExpenseEvidence,
+  ExpenseType,
+  ExpenseWithRelations,
+  UpdateExpenseInput,
 } from '@sred/shared'
 import { query } from '../db.js'
 import { requireAuth } from '../middleware/requireAuth.js'
@@ -18,22 +19,14 @@ router.use(requireAuth)
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
-const LABOUR_TIMES = new Set<LabourTime>(['regular', 'overtime', 'double'])
-const LABOUR_TYPES = new Set<LabourType>([
-  'alpha_test',
-  'beta_test',
-  'programming',
-  'test_and_measurement',
-  'design_modifications',
-  'analysis',
+const EXPENSE_TYPES = new Set<ExpenseType>([
+  'materials',
+  'subcontract',
+  'travel',
+  'capital_90_rd',
   'other',
 ])
-const OBJECTIVE_EVIDENCE_VALUES = new Set<ObjectiveEvidence>([
-  'none',
-  'design_of_experiments',
-  'test_records',
-  'progress_reports',
-])
+const EXPENSE_EVIDENCE_VALUES = new Set<ExpenseEvidence>(['none', 'invoice', 'receipt'])
 
 function isUuid(v: unknown): v is string {
   return typeof v === 'string' && UUID_RE.test(v)
@@ -45,28 +38,28 @@ function isIsoDate(v: unknown): v is string {
   return !Number.isNaN(d.getTime())
 }
 
-function isValidHours(v: unknown): v is number {
-  return typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 24
+function isValidCost(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0
 }
 
-// --- Row mappers ---
+// --- Row shape + mappers ---
 
-interface LabourRow {
+interface ExpenseRow {
   id: string
   date: Date | string
   employee_id: string
   project_id: string
-  hours: string // NUMERIC returns string
-  labour_time: LabourTime
-  labour_type: LabourType
-  objective_evidence: ObjectiveEvidence
+  cost: string // NUMERIC returns string
+  po_number: string | null
+  type: ExpenseType
+  objective_evidence: ExpenseEvidence
   notes: string | null
   file_path: string | null
   created_at: Date | string
   updated_at: Date | string
 }
 
-interface LabourRowWithRelations extends LabourRow {
+interface ExpenseRowWithRelations extends ExpenseRow {
   employee_first_name: string
   employee_last_name: string
   project_name: string
@@ -86,15 +79,15 @@ function toIsoTimestamp(v: Date | string): string {
   return typeof v === 'string' ? new Date(v).toISOString() : v.toISOString()
 }
 
-function toLabourEntry(row: LabourRow): LabourEntry {
+function toExpense(row: ExpenseRow): Expense {
   return {
     id: row.id,
     date: toIsoDate(row.date),
     employeeId: row.employee_id,
     projectId: row.project_id,
-    hours: Number(row.hours),
-    labourTime: row.labour_time,
-    labourType: row.labour_type,
+    cost: Number(row.cost),
+    poNumber: row.po_number,
+    type: row.type,
     objectiveEvidence: row.objective_evidence,
     notes: row.notes,
     filePath: row.file_path,
@@ -103,24 +96,43 @@ function toLabourEntry(row: LabourRow): LabourEntry {
   }
 }
 
-function toLabourEntryWithRelations(row: LabourRowWithRelations): LabourEntryWithRelations {
+function toExpenseWithRelations(row: ExpenseRowWithRelations): ExpenseWithRelations {
   return {
-    ...toLabourEntry(row),
+    ...toExpense(row),
     employeeName: `${row.employee_first_name} ${row.employee_last_name}`.trim(),
     projectName: row.project_name,
   }
 }
 
 // SELECT lists kept centralized so column names stay in sync with mappers.
-const LABOUR_SELECT = `
-  l.id, l.date, l.employee_id, l.project_id, l.hours, l.labour_time, l.labour_type,
-  l.objective_evidence, l.notes, l.file_path, l.created_at, l.updated_at`
+const EXPENSE_SELECT = `
+  e.id, e.date, e.employee_id, e.project_id, e.cost, e.po_number, e.type,
+  e.objective_evidence, e.notes, e.file_path, e.created_at, e.updated_at`
 
-const LABOUR_SELECT_WITH_RELATIONS = `
-  ${LABOUR_SELECT},
+const EXPENSE_SELECT_WITH_RELATIONS = `
+  ${EXPENSE_SELECT},
   u.first_name AS employee_first_name,
   u.last_name  AS employee_last_name,
   p.name       AS project_name`
+
+// Verify (employeeId, projectId) exist AND belong to the caller's company.
+// Cross-tenant returns the same "does not exist" error to avoid leaking row existence.
+async function verifyForeignKeysInCompany(
+  employeeId: string,
+  projectId: string,
+  companyId: string
+): Promise<string | null> {
+  const res = await query<{ employee_exists: boolean; project_exists: boolean }>(
+    `SELECT
+       EXISTS(SELECT 1 FROM users    WHERE id = $1 AND company_id = $3) AS employee_exists,
+       EXISTS(SELECT 1 FROM projects WHERE id = $2 AND company_id = $3) AS project_exists`,
+    [employeeId, projectId, companyId]
+  )
+  const row = res.rows[0]
+  if (!row?.employee_exists) return 'employeeId does not exist'
+  if (!row?.project_exists) return 'projectId does not exist'
+  return null
+}
 
 // --- Routes ---
 
@@ -139,22 +151,22 @@ router.get('/', async (req, res, next) => {
     if (typeof from === 'string') {
       if (!isIsoDate(from)) return res.status(400).json({ error: 'Invalid `from` date' })
       params.push(from)
-      where.push(`l.date >= $${params.length}`)
+      where.push(`e.date >= $${params.length}`)
     }
     if (typeof to === 'string') {
       if (!isIsoDate(to)) return res.status(400).json({ error: 'Invalid `to` date' })
       params.push(to)
-      where.push(`l.date <= $${params.length}`)
+      where.push(`e.date <= $${params.length}`)
     }
     if (typeof projectId === 'string') {
       if (!isUuid(projectId)) return res.status(400).json({ error: 'Invalid `projectId`' })
       params.push(projectId)
-      where.push(`l.project_id = $${params.length}`)
+      where.push(`e.project_id = $${params.length}`)
     }
     if (typeof employeeId === 'string') {
       if (!isUuid(employeeId)) return res.status(400).json({ error: 'Invalid `employeeId`' })
       params.push(employeeId)
-      where.push(`l.employee_id = $${params.length}`)
+      where.push(`e.employee_id = $${params.length}`)
     }
 
     const whereSql = `WHERE ${where.join(' AND ')}`
@@ -162,8 +174,9 @@ router.get('/', async (req, res, next) => {
     // Total count uses the same filters but no limit/offset.
     const totalRes = await query<{ total: string }>(
       `SELECT COUNT(*)::text AS total
-       FROM labour_entries l
-       JOIN projects p ON p.id = l.project_id
+       FROM expenses e
+       JOIN users u    ON u.id = e.employee_id
+       JOIN projects p ON p.id = e.project_id
        JOIN users me   ON me.id = $1
        ${whereSql}`,
       params
@@ -175,20 +188,20 @@ router.get('/', async (req, res, next) => {
     params.push(offset)
     const offsetIdx = params.length
 
-    const rows = await query<LabourRowWithRelations>(
-      `SELECT ${LABOUR_SELECT_WITH_RELATIONS}
-       FROM labour_entries l
-       JOIN users u    ON u.id = l.employee_id
-       JOIN projects p ON p.id = l.project_id
+    const rows = await query<ExpenseRowWithRelations>(
+      `SELECT ${EXPENSE_SELECT_WITH_RELATIONS}
+       FROM expenses e
+       JOIN users u    ON u.id = e.employee_id
+       JOIN projects p ON p.id = e.project_id
        JOIN users me   ON me.id = $1
        ${whereSql}
-       ORDER BY l.date DESC, l.created_at DESC
+       ORDER BY e.date DESC, e.created_at DESC
        LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
       params
     )
 
     return res.json({
-      entries: rows.rows.map(toLabourEntryWithRelations),
+      entries: rows.rows.map(toExpenseWithRelations),
       total,
     })
   } catch (err) {
@@ -200,56 +213,76 @@ router.get('/:id', async (req, res, next) => {
   try {
     if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Not found' })
 
-    const result = await query<LabourRowWithRelations>(
-      `SELECT ${LABOUR_SELECT_WITH_RELATIONS}
-       FROM labour_entries l
-       JOIN users u    ON u.id = l.employee_id
-       JOIN projects p ON p.id = l.project_id
+    // Company-scope: row only visible if its project belongs to caller's company.
+    const result = await query<ExpenseRowWithRelations>(
+      `SELECT ${EXPENSE_SELECT_WITH_RELATIONS}
+       FROM expenses e
+       JOIN users u    ON u.id = e.employee_id
+       JOIN projects p ON p.id = e.project_id
        JOIN users me   ON me.id = $1
-       WHERE l.id = $2 AND p.company_id = me.company_id`,
+       WHERE e.id = $2 AND p.company_id = me.company_id`,
       [req.user!.userId, req.params.id]
     )
     const row = result.rows[0]
     if (!row) return res.status(404).json({ error: 'Not found' })
-    return res.json({ entry: toLabourEntryWithRelations(row) })
+    return res.json({ entry: toExpenseWithRelations(row) })
   } catch (err) {
     return next(err)
   }
 })
 
-// Validate and extract a CreateLabourInput from arbitrary body.
-// Returns either a parsed object or an error message.
-function parseCreateLabour(body: unknown): { ok: true; value: {
+// Validate and extract a CreateExpenseInput from arbitrary body.
+interface ParsedCreateExpense {
   date: string
   employeeId: string
   projectId: string
-  hours: number
-  labourTime: LabourTime
-  labourType: LabourType
-  objectiveEvidence: ObjectiveEvidence
+  cost: number
+  poNumber: string | null
+  type: ExpenseType
+  objectiveEvidence: ExpenseEvidence
   notes: string | null
-} } | { ok: false; error: string } {
+}
+
+function parseCreateExpense(
+  body: unknown
+): { ok: true; value: ParsedCreateExpense } | { ok: false; error: string } {
   if (!body || typeof body !== 'object') return { ok: false, error: 'Body must be an object' }
-  const b = body as Record<string, unknown>
+  const b = body as Partial<Record<keyof CreateExpenseInput, unknown>>
 
   if (!isIsoDate(b.date)) return { ok: false, error: 'Invalid `date` (expected YYYY-MM-DD)' }
   if (!isUuid(b.employeeId)) return { ok: false, error: 'Invalid `employeeId`' }
   if (!isUuid(b.projectId)) return { ok: false, error: 'Invalid `projectId`' }
-  if (!isValidHours(b.hours)) return { ok: false, error: '`hours` must be a number > 0 and <= 24' }
-  if (typeof b.labourTime !== 'string' || !LABOUR_TIMES.has(b.labourTime as LabourTime)) {
-    return { ok: false, error: 'Invalid `labourTime`' }
+  if (!isValidCost(b.cost)) return { ok: false, error: '`cost` must be a number >= 0' }
+  if (typeof b.type !== 'string' || !EXPENSE_TYPES.has(b.type as ExpenseType)) {
+    return { ok: false, error: 'Invalid `type`' }
   }
-  if (typeof b.labourType !== 'string' || !LABOUR_TYPES.has(b.labourType as LabourType)) {
-    return { ok: false, error: 'Invalid `labourType`' }
+
+  let objectiveEvidence: ExpenseEvidence = 'none'
+  if ('objectiveEvidence' in b && b.objectiveEvidence !== undefined) {
+    if (
+      typeof b.objectiveEvidence !== 'string' ||
+      !EXPENSE_EVIDENCE_VALUES.has(b.objectiveEvidence as ExpenseEvidence)
+    ) {
+      return { ok: false, error: 'Invalid `objectiveEvidence`' }
+    }
+    objectiveEvidence = b.objectiveEvidence as ExpenseEvidence
   }
-  if (typeof b.objectiveEvidence !== 'string' || !OBJECTIVE_EVIDENCE_VALUES.has(b.objectiveEvidence as ObjectiveEvidence)) {
-    return { ok: false, error: 'Invalid `objectiveEvidence`' }
+
+  let poNumber: string | null = null
+  if ('poNumber' in b) {
+    if (b.poNumber !== null && typeof b.poNumber !== 'string') {
+      return { ok: false, error: 'Invalid `poNumber`' }
+    }
+    poNumber = b.poNumber ?? null
   }
-  const notes = b.notes === undefined || b.notes === null
-    ? null
-    : typeof b.notes === 'string'
-      ? b.notes
-      : null
+
+  let notes: string | null = null
+  if ('notes' in b) {
+    if (b.notes !== null && typeof b.notes !== 'string') {
+      return { ok: false, error: 'Invalid `notes`' }
+    }
+    notes = b.notes ?? null
+  }
 
   return {
     ok: true,
@@ -257,38 +290,18 @@ function parseCreateLabour(body: unknown): { ok: true; value: {
       date: b.date,
       employeeId: b.employeeId,
       projectId: b.projectId,
-      hours: b.hours,
-      labourTime: b.labourTime as LabourTime,
-      labourType: b.labourType as LabourType,
-      objectiveEvidence: b.objectiveEvidence as ObjectiveEvidence,
+      cost: b.cost,
+      poNumber,
+      type: b.type as ExpenseType,
+      objectiveEvidence,
       notes,
     },
   }
 }
 
-// Verify (employeeId, projectId) exist AND belong to the caller's company.
-// Cross-tenant returns the same "does not exist" error to avoid leaking row
-// existence across tenants.
-async function verifyForeignKeysInCompany(
-  employeeId: string,
-  projectId: string,
-  companyId: string
-): Promise<string | null> {
-  const res = await query<{ employee_exists: boolean; project_exists: boolean }>(
-    `SELECT
-       EXISTS(SELECT 1 FROM users    WHERE id = $1 AND company_id = $3) AS employee_exists,
-       EXISTS(SELECT 1 FROM projects WHERE id = $2 AND company_id = $3) AS project_exists`,
-    [employeeId, projectId, companyId]
-  )
-  const row = res.rows[0]
-  if (!row?.employee_exists) return 'employeeId does not exist'
-  if (!row?.project_exists) return 'projectId does not exist'
-  return null
-}
-
 router.post('/', async (req, res, next) => {
   try {
-    const parsed = parseCreateLabour(req.body)
+    const parsed = parseCreateExpense(req.body)
     if (!parsed.ok) return res.status(400).json({ error: parsed.error })
     const v = parsed.value
 
@@ -302,14 +315,23 @@ router.post('/', async (req, res, next) => {
     const fkErr = await verifyForeignKeysInCompany(v.employeeId, v.projectId, companyId)
     if (fkErr) return res.status(400).json({ error: fkErr })
 
-    const result = await query<LabourRow>(
-      `INSERT INTO labour_entries
-        (date, employee_id, project_id, hours, labour_time, labour_type, objective_evidence, notes)
+    const result = await query<ExpenseRow>(
+      `INSERT INTO expenses
+        (date, employee_id, project_id, cost, po_number, type, objective_evidence, notes)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING ${LABOUR_SELECT.replace(/l\./g, '')}`,
-      [v.date, v.employeeId, v.projectId, v.hours, v.labourTime, v.labourType, v.objectiveEvidence, v.notes]
+       RETURNING ${EXPENSE_SELECT.replace(/e\./g, '')}`,
+      [
+        v.date,
+        v.employeeId,
+        v.projectId,
+        v.cost,
+        v.poNumber,
+        v.type,
+        v.objectiveEvidence,
+        v.notes,
+      ]
     )
-    return res.status(201).json({ entry: toLabourEntry(result.rows[0]) })
+    return res.status(201).json({ entry: toExpense(result.rows[0]) })
   } catch (err) {
     return next(err)
   }
@@ -321,7 +343,15 @@ router.patch('/:id', async (req, res, next) => {
     if (!req.body || typeof req.body !== 'object') {
       return res.status(400).json({ error: 'Body must be an object' })
     }
-    const b = req.body as Record<string, unknown>
+    const b = req.body as Partial<Record<keyof UpdateExpenseInput, unknown>>
+
+    // Caller's company up front for company-scoped update + FK checks.
+    const me = await query<{ company_id: string }>(
+      `SELECT company_id FROM users WHERE id = $1`,
+      [req.user!.userId]
+    )
+    const companyId = me.rows[0]?.company_id
+    if (!companyId) return res.status(401).json({ error: 'Not authenticated' })
 
     // Build SET clause from the provided fields, validating each.
     const sets: string[] = []
@@ -343,24 +373,27 @@ router.patch('/:id', async (req, res, next) => {
       if (!isUuid(b.projectId)) return res.status(400).json({ error: 'Invalid `projectId`' })
       push('project_id', b.projectId)
     }
-    if ('hours' in b) {
-      if (!isValidHours(b.hours)) return res.status(400).json({ error: '`hours` must be a number > 0 and <= 24' })
-      push('hours', b.hours)
+    if ('cost' in b) {
+      if (!isValidCost(b.cost)) return res.status(400).json({ error: '`cost` must be a number >= 0' })
+      push('cost', b.cost)
     }
-    if ('labourTime' in b) {
-      if (typeof b.labourTime !== 'string' || !LABOUR_TIMES.has(b.labourTime as LabourTime)) {
-        return res.status(400).json({ error: 'Invalid `labourTime`' })
+    if ('poNumber' in b) {
+      if (b.poNumber !== null && typeof b.poNumber !== 'string') {
+        return res.status(400).json({ error: 'Invalid `poNumber`' })
       }
-      push('labour_time', b.labourTime)
+      push('po_number', b.poNumber ?? null)
     }
-    if ('labourType' in b) {
-      if (typeof b.labourType !== 'string' || !LABOUR_TYPES.has(b.labourType as LabourType)) {
-        return res.status(400).json({ error: 'Invalid `labourType`' })
+    if ('type' in b) {
+      if (typeof b.type !== 'string' || !EXPENSE_TYPES.has(b.type as ExpenseType)) {
+        return res.status(400).json({ error: 'Invalid `type`' })
       }
-      push('labour_type', b.labourType)
+      push('type', b.type)
     }
     if ('objectiveEvidence' in b) {
-      if (typeof b.objectiveEvidence !== 'string' || !OBJECTIVE_EVIDENCE_VALUES.has(b.objectiveEvidence as ObjectiveEvidence)) {
+      if (
+        typeof b.objectiveEvidence !== 'string' ||
+        !EXPENSE_EVIDENCE_VALUES.has(b.objectiveEvidence as ExpenseEvidence)
+      ) {
         return res.status(400).json({ error: 'Invalid `objectiveEvidence`' })
       }
       push('objective_evidence', b.objectiveEvidence)
@@ -376,46 +409,41 @@ router.patch('/:id', async (req, res, next) => {
       return res.status(400).json({ error: 'No updatable fields provided' })
     }
 
-    // Look up the current row + caller's company id in one trip. The JOIN
-    // gates company scope: if the entry's project isn't in caller's company,
-    // no row comes back and we return 404 — same shape as expenses.
-    const current = await query<{
-      employee_id: string
-      project_id: string
-      company_id: string
-    }>(
-      `SELECT l.employee_id, l.project_id, me.company_id
-       FROM labour_entries l
-       JOIN projects p ON p.id = l.project_id
-       JOIN users me   ON me.id = $1
-       WHERE l.id = $2 AND p.company_id = me.company_id`,
-      [req.user!.userId, req.params.id]
+    // First, fetch the current row scoped to caller's company so we can
+    // (a) emit a clean 404 on cross-tenant access, and
+    // (b) fill in whichever FK wasn't being updated for the in-company check.
+    const current = await query<{ employee_id: string; project_id: string }>(
+      `SELECT e.employee_id, e.project_id
+       FROM expenses e
+       JOIN projects p ON p.id = e.project_id
+       WHERE e.id = $1 AND p.company_id = $2`,
+      [req.params.id, companyId]
     )
     const currentRow = current.rows[0]
     if (!currentRow) return res.status(404).json({ error: 'Not found' })
 
-    // If FK columns changed, verify the new references stay inside caller's company.
+    // If FK columns changed, verify the new references exist inside caller's company.
     if ('employeeId' in b || 'projectId' in b) {
       const fkErr = await verifyForeignKeysInCompany(
         (b.employeeId as string | undefined) ?? currentRow.employee_id,
         (b.projectId as string | undefined) ?? currentRow.project_id,
-        currentRow.company_id
+        companyId
       )
       if (fkErr) return res.status(400).json({ error: fkErr })
     }
 
     sets.push(`updated_at = now()`)
     params.push(req.params.id)
-    const result = await query<LabourRow>(
-      `UPDATE labour_entries
+    const result = await query<ExpenseRow>(
+      `UPDATE expenses
        SET ${sets.join(', ')}
        WHERE id = $${params.length}
-       RETURNING ${LABOUR_SELECT.replace(/l\./g, '')}`,
+       RETURNING ${EXPENSE_SELECT.replace(/e\./g, '')}`,
       params
     )
     const row = result.rows[0]
     if (!row) return res.status(404).json({ error: 'Not found' })
-    return res.json({ entry: toLabourEntry(row) })
+    return res.json({ entry: toExpense(row) })
   } catch (err) {
     return next(err)
   }
@@ -424,13 +452,13 @@ router.patch('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Not found' })
-    // Company-scope via USING: delete only if the entry's project is in
-    // caller's company. Cross-tenant attempts hit 0 rows → 404.
+
+    // Company-scoped delete: only delete if expense's project belongs to caller's company.
     const result = await query(
-      `DELETE FROM labour_entries l
+      `DELETE FROM expenses e
        USING projects p, users me
-       WHERE l.id = $1
-         AND p.id = l.project_id
+       WHERE e.id = $1
+         AND p.id = e.project_id
          AND me.id = $2
          AND p.company_id = me.company_id`,
       [req.params.id, req.user!.userId]
