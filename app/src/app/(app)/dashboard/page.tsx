@@ -8,7 +8,7 @@ import type {
 import { Card } from '@/components/Card'
 import { serverApi } from '@/lib/api.server'
 import { getCurrentUser } from '@/lib/auth.server'
-import { formatRelativeTime } from '@/lib/format'
+import { formatLongDate, formatRelativeTime } from '@/lib/format'
 
 const ACTIVITY_ICONS: Record<RecentActivityKind, string> = {
   labour: '◷',
@@ -41,12 +41,7 @@ export default async function DashboardPage() {
   // Layout already guards, but this satisfies TS and protects against races.
   if (!user) return null
 
-  const today = new Date().toLocaleDateString(undefined, {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  const today = formatLongDate(new Date(), user.timezone)
 
   return (
     <div className="space-y-12">
@@ -95,7 +90,7 @@ export default async function DashboardPage() {
                       dateTime={item.ts}
                       className="text-xs text-text-muted"
                     >
-                      {formatRelativeTime(item.ts)}
+                      {formatRelativeTime(item.ts, user.timezone)}
                     </time>
                   </li>
                 ))}

@@ -652,3 +652,113 @@ Double check the prototype that is sent.When viewing an employees you don't just
 
 ### 2026-05-11T13:45:24Z
 Can we use a white background for this? And the sizing still feels too constrained. We didn't have to follow the prototype that was the old version.We are trying to modernize it so don't use it as your source of truth.
+
+### 2026-05-11T13:55:49Z
+Do I need to restart it because I don't see the changes.
+
+### 2026-05-11T13:57:09Z
+It's updated now, but I still see black background.
+
+### 2026-05-11T13:59:37Z
+Start building the preference screen.
+Notice that there is a time zone selection. We need to create a single time zone formatter so that it always respect the t the the user's time zone and not the browsers tz.
+
+### 2026-05-11T14:05:18Z
+<task-notification>
+<task-id>a06f336f3b6c61d70</task-id>
+<tool-use-id>toolu_018YAfi3ngsQ7GvBZrayvreD</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-paolouy-dev-sred-manager/da4a2ff4-02a7-4ea2-94e6-d8ef8d9de34c/tasks/a06f336f3b6c61d70.output</output-file>
+<status>completed</status>
+<summary>Agent "Build preferences backend + extend session" completed</summary>
+<result>Both workspaces typecheck clean.
+
+---
+
+## Files modified
+- `/Users/paolouy/dev/sred-manager/api/src/routes/auth.ts` — extended `UserAuthRow`, `toLoginResponse`, and both SELECTs (`/login` and `/me`) to include `timezone` and `language`.
+- `/Users/paolouy/dev/sred-manager/api/src/index.ts` — imported and mounted the preferences router at `/preferences`.
+
+## Files created
+- `/Users/paolouy/dev/sred-manager/api/src/routes/preferences.ts` — 4 routes behind `requireAuth`:
+  - `GET /preferences/user` → `{ user: SessionUser }` for the calling user
+  - `PATCH /preferences/user` → updates only `req.user!.userId`'s row; validates `timezone` against `SUPPORTED_TIMEZONES`, `language` against `SUPPORTED_LANGUAGES`, `role` as nullable string with 120-char cap
+  - `GET /preferences/company` → `{ company: Company }` scoped via `JOIN users me ON me.id = $1 WHERE c.id = me.company_id`
+  - `PATCH /preferences/company` → admin-only (`accessLevel !== 'admin'` → 403 `'Admin access required'`); UPDATE joins through `me.company_id` so it can only mutate the caller's company
+
+## Confirmations
+- `/auth/login` and `/auth/me` now both return `timezone` and `language` in the user payload (`toLoginResponse` mapper updated, both SELECT lists include the columns).
+- `PATCH /preferences/user` validates `timezone` against `SUPPORTED_TIMEZONES` via `SUPPORTED_TIMEZONES.some((t) =&gt; t.value === input)` (and same for `SUPPORTED_LANGUAGES`).
+- `PATCH /preferences/company` returns `403 { error: 'Admin access required' }` for any non-admin caller — first check in the handler, before body parsing.
+
+## Judgment calls
+1. **`GET /preferences/user` queries the DB rather than echoing `req.user`** — the JWT only carries `userId/email/accessLevel`, but the response needs `firstName/lastName/timezone/language`. Mirrors how `/auth/me` works.
+2. **`COMPANY_SELECT` uses `c.` aliased columns and is reused for both the GET join and the PATCH `RETURNING`** — the PATCH uses `UPDATE companies c ... FROM users me`, and Postgres accepts aliased columns in `RETURNING` when there's a `FROM` join (same approach the existing `employees.ts` PATCH uses with `USER_SELECT`).
+3. **Trim on nullable text fields, but don't reject empty strings** — sending `""` is treated as a legitimate "set this to empty string" and stored as-is after trim. If the product wants empty-string-means-clear, that's a one-line tweak, but the spec said "allow null (means 'clear this field')" so I kept null and string as distinct inputs.
+4. **No body-level guard against unknown keys** — matches the codebase pattern (`employees.ts`/`projects.ts` also silently ignore unknown fields). The `"No updatable fields provided"` check catches the case where the body has zero recognized fields.
+5. **Did not add `requireAdmin` middleware** — only one route needs it; an inline check is clearer than a new abstraction. The pattern can be promoted later if a second admin-only route appears.</result>
+<usage><total_tokens>58208</total_tokens><tool_uses>25</tool_uses><duration_ms>159783</duration_ms></usage>
+</task-notification>
+
+### 2026-05-11T14:11:53Z
+<task-notification>
+<task-id>a1ab9aa218c29f5a1</task-id>
+<tool-use-id>toolu_01H8dyY3VfyKeUfuszgWGKh9</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-paolouy-dev-sred-manager/da4a2ff4-02a7-4ea2-94e6-d8ef8d9de34c/tasks/a1ab9aa218c29f5a1.output</output-file>
+<status>completed</status>
+<summary>Agent "Build preferences frontend + tz formatter" completed</summary>
+<result>Done. Summary follows.
+
+---
+
+## Files created
+
+- `/Users/paolouy/dev/sred-manager/app/src/lib/timezone-context.tsx` — `&lt;TimezoneProvider&gt;`, `useTimezone()`, `useFormatters()`. Hook throws if used outside the provider.
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/preferences/page.tsx` — user prefs (server).
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/preferences/company/page.tsx` — company prefs (server, gates form by `accessLevel === 'admin'`).
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/preferences/_components/PreferencesNav.tsx` — sub-nav.
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/preferences/_components/UserPreferencesForm.tsx` — email (disabled), role, language, timezone.
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/preferences/_components/CompanyPreferencesForm.tsx` — sectioned (Identity / Address / Contact / Operations) two-column grid; disabled for non-admins.
+
+## Files modified
+
+- `/Users/paolouy/dev/sred-manager/app/src/lib/format.ts` — new tz-required signatures + new helpers (`formatDateTime`, `formatLongDate`, `formatInteger`, `formatRate`).
+- `/Users/paolouy/dev/sred-manager/app/src/lib/auth.ts` — `SessionUser` is now a re-export from `@sred/shared`.
+- `/Users/paolouy/dev/sred-manager/app/src/components/AppShell.tsx` — wraps children in `&lt;TimezoneProvider tz={user.timezone}&gt;`.
+- All 9 callers swept:
+  - Server (pull `tz` from `getCurrentUser().timezone`): `dashboard/page.tsx`, `employees/[id]/page.tsx`, `projects/page.tsx`, `labour/page.tsx`, `expenses/page.tsx`.
+  - Client (use `useFormatters()`): `employees/[id]/_components/EmployeeDetail.tsx`, `projects/[id]/_components/ProjectDetail.tsx`, `labour/[id]/_components/LabourDetail.tsx`, `expenses/[id]/_components/ExpenseDetail.tsx`.
+
+## New `format.ts` signatures
+
+```ts
+export function formatDate(value: string | null | undefined, tz: string): string
+export function formatLongDate(value: string | Date, tz: string): string
+export function formatDateTime(value: string | null | undefined, tz: string): string
+export function formatRelativeTime(value: string | Date, tz: string): string
+export function formatHours(value: number | null | undefined): string
+export function formatInteger(value: number): string
+export function formatRate(value: number): string
+export function formatCurrency(value: number | null | undefined): string
+```
+
+All date functions use `Intl.DateTimeFormat('en-CA', { timeZone: tz, ... })`. `formatDate` returns `YYYY-MM-DD` ISO-style. `formatDateTime` strips the `en-CA` comma so it reads `2026-05-11 14:32`.
+
+## Callers found beyond the 9 listed
+
+- `app/src/app/(app)/dashboard/page.tsx` had a direct `new Date().toLocaleDateString(undefined, …)` for the "Welcome … (today's date)" subtitle. Replaced with new `formatLongDate(new Date(), user.timezone)`.
+- `app/src/app/(app)/employees/[id]/_components/EmployeeDetail.tsx` had a local `formatRate` using `toLocaleString` and `employee.hoursPerYear.toLocaleString()` inline. Both moved to `format.ts` (`formatRate`, `formatInteger`).
+
+Final grep confirms zero `toLocaleString` / `toLocaleDateString` / `new Intl.*` outside `format.ts`.
+
+## Design-system silences I had to decide
+
+- **Sub-nav style for `/preferences` tabs**: design-system.md only specifies the global top-nav (rounded pill, `bg-accent-soft`). I chose an underlined tab pattern (border-bottom, `border-accent` when active) so it reads as nested navigation rather than competing with the top nav. Same color tokens as the top nav (`text-accent`, `text-text-muted`, `border-border-strong` on hover). If you'd prefer the pill style here too, swap the className in `PreferencesNav.tsx`.
+- **Two-column form grid for company prefs**: design-system.md doesn't have a form-layout primitive. I followed the `EmployeeForm` precedent: `grid gap-6 sm:grid-cols-2` inside `space-y-6` blocks, with section headers (`text-lg font-semibold tracking-tight`) separating Identity / Address / Contact / Operations. `space-y-10` between sections per the design-system "between form sections" guidance.
+- **Read-only treatment for non-admin company prefs**: design-system.md doesn't specify a "notice" pattern. I used `bg-accent-soft text-accent border-border` (same palette as the info badge in the badge spec) with `role="note"`.
+
+## Verification
+
+- `yarn workspace @sred/app run typecheck` — exit 0.
+- `yarn workspace @sred/app run lint` — exit 0.</result>
+<usage><total_tokens>117748</total_tokens><tool_uses>101</tool_uses><duration_ms>515914</duration_ms></usage>
+</task-notification>

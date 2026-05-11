@@ -15,13 +15,18 @@ import {
   Table,
 } from '@/components/Table'
 import { serverApi } from '@/lib/api.server'
+import { getCurrentUser } from '@/lib/auth.server'
 import { EXPENSE_TYPE_LABELS } from '@/lib/expense-labels'
 import { formatCurrency, formatDate } from '@/lib/format'
 
 export default async function ExpensesListPage() {
-  const { entries, total } = await serverApi<ExpenseListResponse>(
-    '/expenses?limit=50',
-  )
+  const [{ entries, total }, currentUser] = await Promise.all([
+    serverApi<ExpenseListResponse>('/expenses?limit=50'),
+    getCurrentUser(),
+  ])
+
+  if (!currentUser) return null
+  const tz = currentUser.timezone
 
   return (
     <div className="space-y-12">
@@ -59,14 +64,14 @@ export default async function ExpensesListPage() {
                 <TRLink
                   key={entry.id}
                   href={`/expenses/${entry.id}`}
-                  accessibleLabel={`View expense ${formatDate(entry.date)} — ${entry.employeeName} — ${formatCurrency(entry.cost)}`}
+                  accessibleLabel={`View expense ${formatDate(entry.date, tz)} — ${entry.employeeName} — ${formatCurrency(entry.cost)}`}
                 >
                   <TD>
                     <Link
                       href={`/expenses/${entry.id}`}
                       className="font-medium text-text hover:underline"
                     >
-                      {formatDate(entry.date)}
+                      {formatDate(entry.date, tz)}
                     </Link>
                   </TD>
                   <TD>{entry.employeeName}</TD>

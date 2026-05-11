@@ -11,7 +11,7 @@ import { Card } from '@/components/Card'
 import { DetailLayout } from '@/components/DetailLayout'
 import { ApiError } from '@/lib/api'
 import { clientApi } from '@/lib/api.client'
-import { formatDate } from '@/lib/format'
+import { useFormatters } from '@/lib/timezone-context'
 import {
   PROJECT_PHASE_LABELS,
   PROJECT_TYPE_LABELS,
@@ -36,6 +36,7 @@ export function ProjectDetail({
   parentProjects,
 }: ProjectDetailProps) {
   const router = useRouter()
+  const { formatDate } = useFormatters()
   const [editing, setEditing] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)

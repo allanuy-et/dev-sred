@@ -20,6 +20,7 @@ import {
   Table,
 } from '@/components/Table'
 import { serverApi } from '@/lib/api.server'
+import { getCurrentUser } from '@/lib/auth.server'
 import { formatDate } from '@/lib/format'
 import { PROJECT_PHASE_LABELS } from '@/lib/project-labels'
 import { parseStatusFilter } from '@/lib/status-filter'
@@ -37,12 +38,17 @@ export default async function ProjectsListPage({
   const { status: rawStatus } = await searchParams
   const status = parseStatusFilter(rawStatus)
 
-  const [{ projects }, { employees }] = await Promise.all([
+  const [{ projects }, { employees }, currentUser] = await Promise.all([
     serverApi<ProjectListResponse>(`/projects?status=${status}`),
     // Employees are needed to render the Manager column. Default = active only,
     // which is fine — we just need a lookup map for IDs that appear on rows.
     serverApi<EmployeeListResponse>('/employees?status=all'),
+    getCurrentUser(),
   ])
+
+  // Layout already gates; this protects TS + races.
+  if (!currentUser) return null
+  const tz = currentUser.timezone
 
   const employeeById = new Map(employees.map((e) => [e.id, e]))
 
@@ -112,8 +118,8 @@ export default async function ProjectsListPage({
                     </Link>
                   </TD>
                   <TD>{PROJECT_PHASE_LABELS[p.phase]}</TD>
-                  <TD>{formatDate(p.startDate)}</TD>
-                  <TD>{formatDate(p.dueDate)}</TD>
+                  <TD>{formatDate(p.startDate, tz)}</TD>
+                  <TD>{formatDate(p.dueDate, tz)}</TD>
                   <TD>
                     {p.projectManagerId
                       ? managerName(employeeById.get(p.projectManagerId))

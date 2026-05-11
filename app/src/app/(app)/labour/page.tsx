@@ -15,13 +15,18 @@ import {
   Table,
 } from '@/components/Table'
 import { serverApi } from '@/lib/api.server'
+import { getCurrentUser } from '@/lib/auth.server'
 import { formatDate, formatHours } from '@/lib/format'
 import { LABOUR_TYPE_LABELS } from '@/lib/labour-labels'
 
 export default async function LabourListPage() {
-  const { entries, total } = await serverApi<LabourListResponse>(
-    '/labour?limit=50',
-  )
+  const [{ entries, total }, currentUser] = await Promise.all([
+    serverApi<LabourListResponse>('/labour?limit=50'),
+    getCurrentUser(),
+  ])
+
+  if (!currentUser) return null
+  const tz = currentUser.timezone
 
   return (
     <div className="space-y-12">
@@ -59,14 +64,14 @@ export default async function LabourListPage() {
                 <TRLink
                   key={entry.id}
                   href={`/labour/${entry.id}`}
-                  accessibleLabel={`View labour entry ${formatDate(entry.date)} — ${entry.employeeName} — ${formatHours(entry.hours)}`}
+                  accessibleLabel={`View labour entry ${formatDate(entry.date, tz)} — ${entry.employeeName} — ${formatHours(entry.hours)}`}
                 >
                   <TD>
                     <Link
                       href={`/labour/${entry.id}`}
                       className="font-medium text-text hover:underline"
                     >
-                      {formatDate(entry.date)}
+                      {formatDate(entry.date, tz)}
                     </Link>
                   </TD>
                   <TD>{entry.employeeName}</TD>

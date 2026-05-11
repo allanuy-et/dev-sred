@@ -8,7 +8,8 @@ import type { LabourEntryWithRelations } from '@sred/shared'
 import { Button } from '@/components/Button'
 import { ApiError } from '@/lib/api'
 import { clientApi } from '@/lib/api.client'
-import { formatDate, formatHours } from '@/lib/format'
+import { formatHours } from '@/lib/format'
+import { useFormatters } from '@/lib/timezone-context'
 import {
   LABOUR_TIME_LABELS,
   LABOUR_TYPE_LABELS,
@@ -30,6 +31,7 @@ export function LabourDetail({
   projects,
 }: LabourDetailProps) {
   const router = useRouter()
+  const { formatDate } = useFormatters()
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)

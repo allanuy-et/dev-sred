@@ -13,6 +13,7 @@ import type {
 import { Card } from '@/components/Card'
 import { ApiError } from '@/lib/api'
 import { serverApi } from '@/lib/api.server'
+import { getCurrentUser } from '@/lib/auth.server'
 import { LABOUR_TYPE_LABELS } from '@/lib/labour-labels'
 import { EXPENSE_TYPE_LABELS } from '@/lib/expense-labels'
 import { formatCurrency, formatDate, formatHours } from '@/lib/format'
@@ -64,9 +65,16 @@ export default async function EmployeeDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const employee = await loadEmployee(id)
+  const [employee, currentUser] = await Promise.all([
+    loadEmployee(id),
+    getCurrentUser(),
+  ])
 
   if (!employee) notFound()
+  // Layout already gates, but TS doesn't know that. Bail safely.
+  if (!currentUser) return null
+
+  const tz = currentUser.timezone
 
   const [labour, expenses] = await Promise.all([
     loadRecentLabour(employee.id),
@@ -78,10 +86,12 @@ export default async function EmployeeDetailPage({
       <RecentLabourCard
         employeeId={employee.id}
         entries={labour}
+        tz={tz}
       />
       <RecentExpensesCard
         employeeId={employee.id}
         entries={expenses}
+        tz={tz}
       />
     </>
   )
@@ -111,9 +121,11 @@ export default async function EmployeeDetailPage({
 function RecentLabourCard({
   employeeId,
   entries,
+  tz,
 }: {
   employeeId: string
   entries: LabourEntryWithRelations[]
+  tz: string
 }) {
   return (
     <Card
@@ -142,7 +154,7 @@ function RecentLabourCard({
                 className="min-w-0 flex-1 hover:underline"
               >
                 <div className="text-xs font-medium text-text-muted">
-                  {formatDate(entry.date)}
+                  {formatDate(entry.date, tz)}
                 </div>
                 <div className="truncate text-sm text-text">
                   {entry.projectName}
@@ -165,9 +177,11 @@ function RecentLabourCard({
 function RecentExpensesCard({
   employeeId,
   entries,
+  tz,
 }: {
   employeeId: string
   entries: ExpenseWithRelations[]
+  tz: string
 }) {
   return (
     <Card
@@ -196,7 +210,7 @@ function RecentExpensesCard({
                 className="min-w-0 flex-1 hover:underline"
               >
                 <div className="text-xs font-medium text-text-muted">
-                  {formatDate(entry.date)}
+                  {formatDate(entry.date, tz)}
                 </div>
                 <div className="truncate text-sm text-text">
                   {entry.projectName}

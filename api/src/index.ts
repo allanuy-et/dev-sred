@@ -10,6 +10,7 @@ import expensesRouter from './routes/expenses.js'
 import searchRouter from './routes/search.js'
 import reportsRouter from './routes/reports.js'
 import aiRouter from './routes/ai.js'
+import preferencesRouter from './routes/preferences.js'
 
 const app = express()
 const PORT = Number(process.env.PORT ?? 4000)
@@ -36,6 +37,7 @@ app.use('/expenses', expensesRouter)
 app.use('/search', searchRouter)
 app.use('/reports', reportsRouter)
 app.use('/ai', aiRouter)
+app.use('/preferences', preferencesRouter)
 
 // Central error handler — keeps individual handlers thin. Logs server-side,
 // returns a generic 500 to clients so we don't leak internals.

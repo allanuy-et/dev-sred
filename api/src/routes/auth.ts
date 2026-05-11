@@ -20,6 +20,8 @@ interface UserAuthRow {
   first_name: string
   last_name: string
   access_level: 'admin' | 'standard' | 'limited'
+  timezone: string
+  language: string
 }
 
 function toLoginResponse(row: UserAuthRow): LoginResponse {
@@ -30,6 +32,8 @@ function toLoginResponse(row: UserAuthRow): LoginResponse {
       firstName: row.first_name,
       lastName: row.last_name,
       accessLevel: row.access_level,
+      timezone: row.timezone,
+      language: row.language,
     },
   }
 }
@@ -42,7 +46,7 @@ router.post('/login', async (req, res, next) => {
     }
 
     const result = await query<UserAuthRow>(
-      `SELECT id, email, password_hash, first_name, last_name, access_level
+      `SELECT id, email, password_hash, first_name, last_name, access_level, timezone, language
        FROM users
        WHERE email = $1`,
       [email.toLowerCase()]
@@ -78,7 +82,7 @@ router.get('/me', requireAuth, async (req, res, next) => {
   try {
     const userId = req.user!.userId
     const result = await query<UserAuthRow>(
-      `SELECT id, email, password_hash, first_name, last_name, access_level
+      `SELECT id, email, password_hash, first_name, last_name, access_level, timezone, language
        FROM users
        WHERE id = $1`,
       [userId]

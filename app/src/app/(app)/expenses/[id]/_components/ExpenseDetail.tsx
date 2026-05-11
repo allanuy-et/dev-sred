@@ -12,7 +12,8 @@ import {
   EXPENSE_EVIDENCE_LABELS,
   EXPENSE_TYPE_LABELS,
 } from '@/lib/expense-labels'
-import { formatCurrency, formatDate } from '@/lib/format'
+import { formatCurrency } from '@/lib/format'
+import { useFormatters } from '@/lib/timezone-context'
 
 import type { SelectOption } from '../../../labour/_lib/selectOptions'
 import {
@@ -32,6 +33,7 @@ export function ExpenseDetail({
   projects,
 }: ExpenseDetailProps) {
   const router = useRouter()
+  const { formatDate } = useFormatters()
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)

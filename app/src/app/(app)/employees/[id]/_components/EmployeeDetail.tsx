@@ -15,7 +15,8 @@ import {
   ACCESS_LEVEL_LABELS,
   PAID_TYPE_LABELS,
 } from '@/lib/employee-labels'
-import { formatDate } from '@/lib/format'
+import { formatInteger, formatRate } from '@/lib/format'
+import { useFormatters } from '@/lib/timezone-context'
 
 import {
   EmployeeForm,
@@ -33,15 +34,9 @@ export interface EmployeeDetailProps {
   aside: ReactNode
 }
 
-function formatRate(value: number): string {
-  return `$${value.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}/hr`
-}
-
 export function EmployeeDetail({ employee, aside }: EmployeeDetailProps) {
   const router = useRouter()
+  const { formatDate } = useFormatters()
   const [editing, setEditing] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -128,7 +123,7 @@ export function EmployeeDetail({ employee, aside }: EmployeeDetailProps) {
             label="Hours per year"
             value={
               <span className="tabular-nums">
-                {employee.hoursPerYear.toLocaleString()}
+                {formatInteger(employee.hoursPerYear)}
               </span>
             }
           />

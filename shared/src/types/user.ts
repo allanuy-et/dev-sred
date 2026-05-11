@@ -35,8 +35,27 @@ export interface LoginRequest {
   password: string
 }
 
+// Public-safe session shape — what the API returns from /auth/login, /auth/me,
+// and what the frontend keeps in its session context. Includes the
+// localization preferences (timezone, language) so every rendered date can
+// respect the user's tz from anywhere in the app.
+export type SessionUser = Pick<
+  User,
+  | 'id'
+  | 'email'
+  | 'firstName'
+  | 'lastName'
+  | 'accessLevel'
+  | 'timezone'
+  | 'language'
+>
+
 export interface LoginResponse {
-  user: Pick<User, 'id' | 'email' | 'firstName' | 'lastName' | 'accessLevel'>
+  user: SessionUser
+}
+
+export interface MeResponse {
+  user: SessionUser
 }
 
 export interface CreateEmployeeInput {
