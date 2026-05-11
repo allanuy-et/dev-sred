@@ -104,7 +104,7 @@ export function ProjectDetail({
       }
     >
       <Card>
-        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+        <dl className="grid gap-x-6 gap-y-6 sm:grid-cols-2">
           <DescriptionItem
             label="Status"
             value={
@@ -155,13 +155,13 @@ export function ProjectDetail({
         {error ? (
           <p
             role="alert"
-            className="mt-6 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-danger"
+            className="mt-8 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-danger"
           >
             {error}
           </p>
         ) : null}
 
-        <div className="mt-6 flex items-center justify-end gap-2">
+        <div className="mt-8 flex items-center justify-end gap-2">
           <Button
             variant={isActive ? 'destructive' : 'secondary'}
             onClick={handleToggleStatus}

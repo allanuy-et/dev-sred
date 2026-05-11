@@ -20,7 +20,7 @@ const variants: Record<Variant, string> = {
 }
 
 const sizes: Record<Size, string> = {
-  default: 'px-3.5 py-2 text-sm',
+  default: 'px-4 py-2.5 text-sm',
   sm: 'px-2.5 py-1.5 text-xs',
 }
 

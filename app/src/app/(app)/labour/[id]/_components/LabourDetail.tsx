@@ -81,8 +81,8 @@ export function LabourDetail({
   }
 
   return (
-    <div className="space-y-6">
-      <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+    <div className="space-y-8">
+      <dl className="grid gap-x-6 gap-y-6 sm:grid-cols-2">
         <DescriptionItem label="Date" value={formatDate(entry.date)} />
         <DescriptionItem
           label="Hours"

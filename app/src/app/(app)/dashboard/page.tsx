@@ -49,15 +49,15 @@ export default async function DashboardPage() {
   })
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-12">
       <header>
-        <h1 className="text-3xl font-semibold tracking-tight">
+        <h1 className="text-4xl font-semibold tracking-tight">
           Welcome, {user.firstName} {user.lastName}
         </h1>
-        <p className="mt-1 text-sm text-text-muted">{today}</p>
+        <p className="mt-2 text-sm text-text-muted">{today}</p>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-2">
+      <section className="grid gap-6 sm:grid-cols-2">
         <StatCard label="Hours this week" value={data.stats?.hoursThisWeek} />
         <StatCard
           label="Projects"
@@ -68,7 +68,7 @@ export default async function DashboardPage() {
         />
       </section>
 
-      <div className="grid gap-8 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card title="Recent Activity">
             {data.activity.length === 0 ? (
@@ -124,15 +124,15 @@ function StatCard({
   helper?: string
 }) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-8 shadow-sm">
+    <div className="rounded-lg border border-border bg-surface p-10 shadow-sm">
       <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
         {label}
       </p>
-      <p className="mt-2 text-4xl font-semibold tracking-tight tabular-nums">
+      <p className="mt-3 text-5xl font-semibold tracking-tight tabular-nums">
         {value ?? '—'}
       </p>
       {helper ? (
-        <p className="mt-1 text-xs text-text-muted">{helper}</p>
+        <p className="mt-2 text-xs text-text-muted">{helper}</p>
       ) : null}
     </div>
   )

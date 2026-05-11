@@ -24,11 +24,11 @@ export default async function ExpensesListPage() {
   )
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-12">
       <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Expenses</h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <h1 className="text-4xl font-semibold tracking-tight">Expenses</h1>
+          <p className="mt-2 text-sm text-text-muted">
             {total} {total === 1 ? 'entry' : 'entries'} recorded.
           </p>
         </div>

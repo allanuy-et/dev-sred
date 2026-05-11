@@ -40,13 +40,13 @@ export default async function ProjectDetailPage({
   const parentOptions = allProjects.filter((p) => p.id !== project.id)
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-12">
       <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 className="text-4xl font-semibold tracking-tight">
             {project.name}
           </h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-muted">
             {project.type === 'sred' ? 'SR&ED' : 'Internal'} project
           </p>
         </div>

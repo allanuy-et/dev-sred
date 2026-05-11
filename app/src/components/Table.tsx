@@ -19,7 +19,10 @@ export function Table({
 }
 
 export function THead({ children }: { children: ReactNode }) {
-  return <thead className="bg-surface-muted">{children}</thead>
+  // Header has no background fill — pure white. Visual differentiation comes
+  // from the uppercase tracking, the muted color, and the bottom border on
+  // the row inside.
+  return <thead>{children}</thead>
 }
 
 export function TBody({ children }: { children: ReactNode }) {
@@ -96,7 +99,7 @@ export function TH({
     <th
       scope="col"
       className={cn(
-        'px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-text-muted',
+        'px-4 py-3 text-xs font-medium uppercase tracking-wider text-text-muted',
         align === 'right'
           ? 'text-right'
           : align === 'center'
@@ -122,7 +125,7 @@ export function TD({
   return (
     <td
       className={cn(
-        'px-4 py-3 align-middle',
+        'px-4 py-4 align-middle',
         align === 'right'
           ? 'text-right'
           : align === 'center'

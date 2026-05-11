@@ -158,8 +158,8 @@ export function EmployeeForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-      <div className="grid gap-4 sm:grid-cols-2">
+    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+      <div className="grid gap-6 sm:grid-cols-2">
         <Field
           label="Email"
           type="email"

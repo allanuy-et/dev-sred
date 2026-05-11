@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  /* Surfaces — light, airy, mostly white. */
+  /* Surfaces — pure white. No grays pretending to be white.
+     Cards are distinguished by border + shadow-sm alone. */
   --bg: #ffffff;
   --surface: #ffffff;
-  --surface-muted: #f8fafc;   /* subtle tinted block: sidebar cards, table headers */
-  --surface-hover: #fafafa;   /* row / button hover */
+  --surface-hover: #f4f4f5;   /* row / ghost button hover only (zinc-100) */
 
   /* Borders — cool neutral (zinc family), visible but not heavy. */
   --border: #e4e4e7;
@@ -31,7 +31,6 @@
   :root {
     --bg: #0a0a0a;
     --surface: #111113;
-    --surface-muted: #16161a;
     --surface-hover: #1c1c20;
     --border: #27272a;
     --border-strong: #3f3f46;
@@ -47,7 +46,6 @@
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
-  --color-surface-muted: var(--surface-muted);
   --color-surface-hover: var(--surface-hover);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
@@ -69,7 +67,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
-  font-size: 15px;            /* baseline body — feels less cramped than 14px */
+  font-size: 16px;            /* modern SaaS baseline (Linear / Vercel / Notion / Stripe) */
   line-height: 1.6;
 }
 

@@ -150,7 +150,7 @@ export function ReportsClient({ projects }: ReportsClientProps) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-12">
       <Card className="no-print">
         <div className="mb-6 flex items-center gap-1 border-b border-border">
           <TabButton
@@ -167,8 +167,8 @@ export function ReportsClient({ projects }: ReportsClientProps) {
           </TabButton>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <SelectField
               label="Project"
               value={projectId}
@@ -313,10 +313,10 @@ function ReportResult({
 
   return (
     <Card>
-      <header className="mb-4 flex items-start justify-between gap-4">
+      <header className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">{heading}</h2>
-          <p className="text-xs text-text-muted">
+          <h2 className="text-xl font-semibold tracking-tight">{heading}</h2>
+          <p className="mt-1 text-xs text-text-muted">
             {projectLabel} · {typeLabel}
           </p>
         </div>

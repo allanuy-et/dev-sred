@@ -26,13 +26,13 @@ const INITIAL: EmployeeFormInitial = {
 
 export default function NewEmployeePage() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-12">
       <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 className="text-4xl font-semibold tracking-tight">
             New employee
           </h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-muted">
             Create a user with sign-in credentials and rate information.
           </p>
         </div>

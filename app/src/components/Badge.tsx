@@ -6,7 +6,7 @@ const variants: Record<BadgeVariant, string> = {
   active: 'bg-green-50 text-success border-green-200',
   concept: 'bg-amber-50 text-warning border-amber-200',
   info: 'bg-accent-soft text-accent border-indigo-200',
-  neutral: 'bg-surface-muted text-text-muted border-border',
+  neutral: 'bg-surface text-text-muted border-border',
 }
 
 function cn(...classes: Array<string | undefined | false>): string {
