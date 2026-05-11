@@ -303,3 +303,194 @@ Relevant file paths:
 <result>Curated 6 prompts. Top entry: `[worked]` — Build error pasted verbatim, zero paraphrasing.</result>
 <usage><total_tokens>24993</total_tokens><tool_uses>7</tool_uses><duration_ms>57949</duration_ms></usage>
 </task-notification>
+
+### 2026-05-11T12:47:49Z
+<task-notification>
+<task-id>a14b014c9e73f253f</task-id>
+<tool-use-id>toolu_01Amm1TcnFyjWVkYejcw7BEf</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-paolouy-dev-sred-manager/da4a2ff4-02a7-4ea2-94e6-d8ef8d9de34c/tasks/a14b014c9e73f253f.output</output-file>
+<status>completed</status>
+<summary>Agent "Build Phase 2 backend" completed</summary>
+<result>Phase 2 backend is done. Typechecks pass on both `@sred/shared` and `@sred/api`.
+
+## Files modified
+
+- `/Users/paolouy/dev/sred-manager/shared/src/types/user.ts` — added `CreateEmployeeInput`, `UpdateEmployeeInput`, `EmployeeResponse`, `EmployeeListResponse`.
+- `/Users/paolouy/dev/sred-manager/shared/src/types/project.ts` — added `CreateProjectInput`, `UpdateProjectInput`, `ProjectResponse`, `ProjectListResponse`.
+- `/Users/paolouy/dev/sred-manager/api/src/routes/employees.ts` — full rewrite: `GET /`, `GET /:id`, `POST /`, `PATCH /:id`, `POST /:id/deactivate`, `POST /:id/reactivate`. `GET /` accepts `?status=active|inactive|all` (defaults `active`).
+- `/Users/paolouy/dev/sred-manager/api/src/routes/projects.ts` — full rewrite, same shape as employees plus cross-ref validation for `parentProjectId` and `projectManagerId`.
+
+`shared/src/index.ts` already re-exports `./types/user.js` and `./types/project.js`, so the new types are exported automatically — no edit needed.
+
+## Shared types added beyond spec
+
+None. The four interfaces per domain match the spec exactly.
+
+## Judgment calls
+
+- **Password minimum length:** Spec says `password` required, no policy. Set a floor of 8 chars in `parseCreateEmployee` — rejecting an empty string is a baseline. Easy to relax.
+- **Email normalization:** Lowercased emails on insert and on PATCH update (matches the existing login flow in `auth.ts` which already calls `email.toLowerCase()` on lookup). Otherwise mixed-case duplicates would slip past the unique index.
+- **Unique-violation handling:** Caught `code === '23505'` (Postgres `unique_violation`) on both POST and PATCH for `users.email` and surface as `409 { error: 'Email already in use' }`. PATCH can also race into a 409 if two clients both try to change an email — covered.
+- **Optional-field passthrough on POST:** Used a dynamic INSERT column list so DB defaults (`hours_per_year=2080`, `regular_rate=0`, etc.) apply when caller omits the field. Explicit `null` for nullable cols (role/startDate/qualifications) is treated the same as omission since they default NULL anyway — caller can PATCH to null if needed later.
+- **Cross-ref validation on projects:** `parentProjectId` and `projectManagerId` must reference rows in the caller's company. Returns 400 `Invalid \`parentProjectId\`` rather than 404 on a foreign-tenant id (same leak rationale doesn't apply here — the caller is providing the id, not asking about it). Also blocked `parentProjectId === :id` self-reference on PATCH.
+- **Status filter validation:** `?status` accepts only `active|inactive|all`; anything else is a 400. Mirrors existing query-param validation in `labour.ts`.
+- **Used FROM-clause UPDATE for company scoping** (`UPDATE users u SET ... FROM users me WHERE u.id = $x AND me.id = $caller AND u.company_id = me.company_id`). This makes scope enforcement happen in one round-trip — UPDATE affects 0 rows on cross-tenant, which the handler maps to 404.
+
+## Confirmations
+
+- **`POST /employees` returns 409 on email conflict:** Yes. Catches Postgres `23505` and returns `409 { error: 'Email already in use' }`. Same on `PATCH /employees/:id` if a caller renames to an in-use email.
+- **Company-scoping returns 404 (not 403) on cross-tenant access:** Yes, on every `:id` endpoint — `GET`, `PATCH`, `POST /deactivate`, `POST /reactivate` — for both employees and projects. The scope is enforced inside the SQL via a join on the caller's company; non-matching rows simply don't return / don't update, and the handler maps `rowCount === 0` to 404.</result>
+<usage><total_tokens>59685</total_tokens><tool_uses>25</tool_uses><duration_ms>183752</duration_ms></usage>
+</task-notification>
+
+### 2026-05-11T12:49:59Z
+<task-notification>
+<task-id>a7bde33b069067d2d</task-id>
+<tool-use-id>toolu_017vrZ91debgZdrjUtnmAV81</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-paolouy-dev-sred-manager/da4a2ff4-02a7-4ea2-94e6-d8ef8d9de34c/tasks/a7bde33b069067d2d.output</output-file>
+<status>completed</status>
+<summary>Agent "Build Phase 2 frontend" completed</summary>
+<result>All files in place, typecheck passes. Here's the report.
+
+## Phase 2 Frontend — Done
+
+### Files created
+
+**Employees**
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/employees/page.tsx` — list with status filter + Add button
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/employees/new/page.tsx` — create form
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/employees/[id]/page.tsx` — server fetch + 404
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/employees/_components/EmployeeForm.tsx` — shared create/edit form (exports `userToFormInitial` helper)
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/employees/[id]/_components/EmployeeDetail.tsx` — view↔edit toggle + Deactivate/Reactivate
+
+**Projects**
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/projects/page.tsx` — list with status filter + SR&amp;ED indicator + manager column
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/projects/new/page.tsx`
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/projects/[id]/page.tsx` — also filters self out of parent-project options
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/projects/_components/ProjectForm.tsx` (exports `projectToFormInitial` helper)
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/projects/[id]/_components/ProjectDetail.tsx`
+
+**Shared additions**
+- `/Users/paolouy/dev/sred-manager/app/src/components/StatusFilter.tsx` — query-param-driven `&lt;select&gt;` (active|inactive|all). Removes the param when set to default to keep URLs clean. Exports `parseStatusFilter()` for server-side coercion. New primitive — design system was silent on filter dropdowns.
+- `/Users/paolouy/dev/sred-manager/app/src/lib/employee-labels.ts` — `ACCESS_LEVEL_LABELS`, `PAID_TYPE_LABELS`, etc.
+- `/Users/paolouy/dev/sred-manager/app/src/lib/project-labels.ts` — `PROJECT_TYPE_LABELS`, `PROJECT_PHASE_LABELS`, etc.
+
+### Reused vs new
+
+**Reused** — Button, Card, Field/SelectField/TextAreaField, Badge, Table primitives, ApiError, `clientApi`/`serverApi`, `formatDate`, `loadEmployees`/`loadProjects` from `app/(app)/labour/_lib/selectOptions.ts` (imported directly from both projects pages — no duplication), and all `@sred/shared` types (`User`, `Project`, `CreateEmployeeInput`, `UpdateEmployeeInput`, `EmployeeResponse`, `EmployeeListResponse`, `CreateProjectInput`, `UpdateProjectInput`, `ProjectResponse`, `ProjectListResponse`, `AccessLevel`, `PaidType`, `ProjectPhase`, `ProjectType`).
+
+**New** — `StatusFilter` (no equivalent existed), label maps for employees/projects (mirrors the existing `labour-labels.ts` pattern).
+
+### Design-system judgment calls
+
+1. **Status filter dropdown style** — design-system has no spec. Built it as a compact inline `&lt;select&gt;` styled with the same token vocabulary as `SelectField` (border-border, bg-surface, focus-accent), but `py-1 text-xs` to fit beside the page-header H1. Worth promoting into `Field.tsx` as a `&lt;CompactSelect&gt;` if used again.
+2. **SR&amp;ED indicator** — the prompt asked for an "SR&amp;ED orange '+' icon" but the design system explicitly bans the retro orange `#e07820` and forbids hard-coded hex. I used the `text-warning` (amber) token applied to a `+` glyph inline before the name, with `title`/`aria-label="SR&amp;ED project"`. Flag for the design-system agent: do we want a formal "SR&amp;ED" badge or icon component? Right now there's no token equivalent of "orange."
+3. **Phase badge** — used the `concept` Badge variant for the `concept` phase in the detail view. Other phases render as plain text since the design system only defines `active` / `concept` / `neutral` badges. Worth a `development` variant later.
+4. **Deactivate confirmation** — used `window.confirm` per the labour pattern. The design system has no modal primitive; if confirmation modals come up again, that's the cue to add one.
+5. **Email immutability in edit mode** — locked the email field for `PATCH` (with helper text). Send only because: (a) `UpdateEmployeeInput = Partial&lt;Omit&lt;CreateEmployeeInput, 'password'&gt;&gt;` still includes email so the backend may accept it, but (b) email is the login identifier — changing it without a confirmation flow is risky. Easy to unlock later.
+6. **Specified employee / Global project** — modeled as boolean `Yes/No` selects rather than checkboxes, matching the form's vertical/uniform field layout. No checkbox primitive exists yet in the design system.
+
+### Contract assumptions for the backend agent
+
+1. `GET /employees?status=active|inactive|all` and `GET /projects?status=active|inactive|all` — status param controls the default of `active` if omitted. The projects list page also calls `GET /employees?status=all` so it can join the project-manager IDs to names (including managers who are now inactive).
+2. `POST /employees` returns **409** on email conflict (mapped to "An employee with this email already exists.").
+3. `POST /projects` may return **409** on name conflict if the backend enforces that — the form already handles it ("A project with this name already exists."). If not enforced, it's dead code, no harm.
+4. `PATCH /employees/:id` accepts `UpdateEmployeeInput` (everything except `password`); body sent omits `password` entirely.
+5. `POST /employees/:id/deactivate`, `POST /employees/:id/reactivate`, `POST /projects/:id/deactivate`, `POST /projects/:id/reactivate` all return `{ ok: true }`.
+6. `parentProjectId: null` is sent when the user picks "— None —". Same for `projectManagerId: null` on "— Unassigned —", `startDate` / `dueDate` empties, `description`, `qualifications`, `role`. Backend should treat `null` as "clear this field."
+7. Nav already lists Projects + Employees and uses path-prefix matching, so the active state lights up automatically on `/employees`, `/employees/new`, `/employees/[id]` etc.
+
+### Verification
+
+`yarn workspace @sred/app run typecheck` — exit 0.</result>
+<usage><total_tokens>75321</total_tokens><tool_uses>48</tool_uses><duration_ms>284675</duration_ms></usage>
+</task-notification>
+
+### 2026-05-11T12:55:52Z
+<task-notification>
+<task-id>a4f8c1d862d13c873</task-id>
+<tool-use-id>toolu_01XA7zuNkjHwAUVRY7ihLfqs</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-paolouy-dev-sred-manager/da4a2ff4-02a7-4ea2-94e6-d8ef8d9de34c/tasks/a4f8c1d862d13c873.output</output-file>
+<status>completed</status>
+<summary>Agent "Review Phase 2 diff" completed</summary>
+<result>Same `req.user!.userId` pattern — consistent with Phase 2.
+
+I have enough now. Here's my review.
+
+---
+
+## Review of Phase 2 diff
+
+### 🚨 Must fix before commit
+
+None. SQL is parameterized end-to-end, dynamic column-list construction uses literal strings for column names (`cols.push('role')`, `push('first_name', …)`), every `:id` endpoint enforces `company_id` scoping, `requireAuth` is mounted via `router.use(requireAuth)` on both new routers.
+
+### ⚠ Should fix
+
+1. **`app/src/app/(app)/projects/_components/ProjectForm.tsx:127-128`** — error handler treats `409` as "A project with this name already exists." But `projects` has no UNIQUE constraint (`api/db/schema.sql:53-68` — only `name TEXT NOT NULL`, no `UNIQUE`). The backend `POST /projects` never returns 409. Dead branch and misleading copy if some other 409 ever bubbles up. Drop the `else if (err.status === 409)` clause, or add a UNIQUE constraint if same-name projects per-company should be rejected.
+
+2. **`app/src/app/(app)/labour/_lib/selectOptions.ts:11,19`** — `loadEmployees()` / `loadProjects()` call `/employees` and `/projects` with no `?status=` param, so they default to `active`. Reused on `/projects/[id]` (line 31-32 in `app/src/app/(app)/projects/[id]/page.tsx`) when rendering the edit form: **if a project's currently-assigned manager (or parent project) has been deactivated, the dropdown won't include them**, so the form silently drops a valid existing assignment on save (the `value=""` falls through to `— Unassigned —` and the PATCH body sends `projectManagerId: null`). Fix: call these helpers with `?status=all` from the project detail page, or merge the project's currently-assigned manager/parent into the option list defensively.
+
+3. **`api/src/routes/employees.ts:18-25` and `api/src/routes/projects.ts:18-23`** — `UUID_RE`, `ISO_DATE_RE`, `STATUS_FILTERS`, `isUuid`, `isIsoDate`, `isNonEmptyString` are now duplicated across three route files (also in `api/src/routes/labour.ts:18-46`). For one-day-build scope this is fine, but if a judge greps for it you'll want to be ready with: "extracting to a `validators.ts` is a 5-minute cleanup I deprioritized." Optionally extract to `api/src/lib/validators.ts`.
+
+4. **`api/src/routes/employees.ts:182-293`** — `parseCreateEmployee` mostly mirrors `CreateEmployeeInput`, but the `ParsedCreateEmployee` interface re-declares every field with adjusted nullability. Not a duplicated type per se (it's a local parse result), but the shape divergence (`hoursPerYear: number | null` here vs. `hoursPerYear?: number` in shared) means the call site at `:344-348` has to special-case nulls. This is the **same pattern as Phase 1 labour**, so it's at least consistent — flagging it only so you're not surprised if a judge asks "why two shapes for the same thing?"
+
+5. **`api/src/routes/employees.ts:495-508` and `api/src/routes/projects.ts:411-424`** — `setEmployeeStatus` and `setProjectStatus` are nearly identical with just the table name differing. Acceptable for the time budget but easy to point at as "one helper away."
+
+### 💡 Nice to fix if time permits
+
+6. **`api/src/routes/employees.ts:130`** — `const USER_RETURNING = USER_SELECT.replace(/u\./g, '')` — clever but a little surprising on first read; an inline comment explaining "RETURNING runs in the context of the INSERT target table, no alias allowed" would save a reader 30 seconds. Same goes for `projects.ts:95`.
+
+7. **`api/src/routes/employees.ts:341-343`** — the `if (v.role !== null) maybe('role', v.role)` pattern dead-ends: `maybe` already short-circuits on `null`. The outer guard is a no-op. Same for `start_date`, `qualifications`, and the same pattern in `projects.ts:277-283`. Drop the outer `if`s.
+
+8. **`api/src/routes/employees.ts:286-288`** — `reg as number | null` / `ot as number | null` / `hol as number | null` casts are fighting the type narrowing. Since the lines above already returned on `typeof reg === 'object'`, TS *should* narrow `reg` to `number | null`. If the narrowing isn't sticking, the cleaner fix is to refactor `parseRate` to return `{ ok: true; value } | { ok: false; error }` like the outer function does — but for a one-day build, the casts are fine.
+
+9. **`api/src/routes/projects.ts:347-349`** — self-parent check (`b.parentProjectId === req.params.id`) is present, but transitive cycles (A → B → A) aren't checked. Almost certainly out of scope; flagging only because a judge sometimes asks "did you think about cycles?" — be ready to say "single-level guard intentionally; multi-level cycle detection is a future task."
+
+10. **`app/src/app/(app)/projects/_components/ProjectForm.tsx:99,103-104`** — repeated `=== '' ? null : value` pattern; `toNullableTrimmed` exists (line 55) but isn't reused for non-trimmed cases. Trivial.
+
+11. **`app/src/app/(app)/projects/page.tsx:43`** — comment says employee lookup uses `?status=all` "which is fine — we just need a lookup map" — good defensive choice, props for the comment. (No fix; positive note.)
+
+12. **`app/src/components/StatusFilter.tsx:63-67`** — inline SVG data-URI with a hardcoded fill color `%2378716c` for the chevron. Color is hex-encoded `#78716c` (stone-500). If `design-system` tokens exist for this, you'd want a token; if not, fine. Mention to design-system agent on next pass.
+
+13. **`app/src/app/(app)/employees/_components/EmployeeForm.tsx:187`** — `&lt;div /&gt;` placeholder to preserve grid layout when password field is hidden in edit mode. Works, but a comment ("preserve 2-col grid alignment when password slot is empty") would defuse "what is this?" questions.
+
+14. **`app/src/app/(app)/employees/_components/EmployeeForm.tsx:124-138`** — the PATCH body always sends every field as a non-partial payload, even if the user changed nothing. The backend handles `'X' in b` as the "was-this-provided" gate, so this works, but it's slightly wasteful and means a stray Save click overwrites every column. For a one-day build this is fine.
+
+### ✅ Looks good
+
+Reviewed `api/src/routes/employees.ts`, `api/src/routes/projects.ts`, the four new shared type interfaces, `StatusFilter.tsx` / `status-filter.ts` split, and all six new app pages/components.
+
+**Defensible points for Wednesday:**
+- All SQL uses parameterized placeholders. Dynamic column-list construction in `INSERT`/`UPDATE` builds the column-name list from string literals only; user input only ever enters the query via `$n`.
+- Every `:id` endpoint joins on `me.company_id` or filters by an explicitly-fetched `companyId` — cross-tenant access returns 404.
+- Cross-references (parent project, project manager) are verified to live in the caller's company before insertion (`existsInCompany`).
+- Bcrypt + 409 on email collision via `unique_violation` SQL state — cleanly mapped.
+- StatusFilter / parseStatusFilter split is correct: `parseStatusFilter` lives in `app/src/lib/status-filter.ts` as a pure module (no `'use client'`, no React), so Server Components can import it without dragging in client runtime. `StatusFilter.tsx` re-exports the type for client-side ergonomics — fine.
+- No type re-declaration: every shared-type usage imports from `@sred/shared`. Local interfaces (`EmployeeFormInitial`, `ProjectFormProps`, etc.) are genuine local prop shapes, not duplicates.
+- Password field is correctly conditional in `EmployeeForm`: shown + required in create mode, omitted from the PATCH body in edit mode.
+- No `console.log`, no `any`, no hardcoded URLs/secrets in the new code.
+
+**Files reviewed:**
+- `/Users/paolouy/dev/sred-manager/api/src/routes/employees.ts`
+- `/Users/paolouy/dev/sred-manager/api/src/routes/projects.ts`
+- `/Users/paolouy/dev/sred-manager/shared/src/types/user.ts`
+- `/Users/paolouy/dev/sred-manager/shared/src/types/project.ts`
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/employees/page.tsx`
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/employees/new/page.tsx`
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/employees/[id]/page.tsx`
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/employees/_components/EmployeeForm.tsx`
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/employees/[id]/_components/EmployeeDetail.tsx`
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/projects/page.tsx`
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/projects/new/page.tsx`
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/projects/[id]/page.tsx`
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/projects/_components/ProjectForm.tsx`
+- `/Users/paolouy/dev/sred-manager/app/src/app/(app)/projects/[id]/_components/ProjectDetail.tsx`
+- `/Users/paolouy/dev/sred-manager/app/src/components/StatusFilter.tsx`
+- `/Users/paolouy/dev/sred-manager/app/src/lib/status-filter.ts`
+- `/Users/paolouy/dev/sred-manager/app/src/lib/employee-labels.ts`
+- `/Users/paolouy/dev/sred-manager/app/src/lib/project-labels.ts`
+
+The single material bug worth fixing before demo is **#2** (inactive manager/parent silently dropped from project edit). Everything else is polish.</result>
+<usage><total_tokens>77099</total_tokens><tool_uses>44</tool_uses><duration_ms>195635</duration_ms></usage>
+</task-notification>

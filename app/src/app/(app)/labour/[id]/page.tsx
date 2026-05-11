@@ -33,8 +33,11 @@ export default async function LabourDetailPage({
   const { id } = await params
   const [entry, employees, projects] = await Promise.all([
     loadEntry(id),
-    loadEmployees(),
-    loadProjects(),
+    // Pass 'all' so a deactivated employee/project that's still referenced
+    // by this entry stays in the edit dropdown — otherwise saving silently
+    // drops the assignment.
+    loadEmployees('all'),
+    loadProjects('all'),
   ])
 
   if (!entry) notFound()

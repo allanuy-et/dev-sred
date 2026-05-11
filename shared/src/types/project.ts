@@ -18,3 +18,25 @@ export interface Project {
   createdAt: string
   updatedAt: string
 }
+
+export interface CreateProjectInput {
+  name: string
+  type: ProjectType
+  description?: string | null
+  isGlobal?: boolean
+  parentProjectId?: string | null
+  phase?: ProjectPhase
+  startDate?: string | null
+  dueDate?: string | null
+  projectManagerId?: string | null
+}
+
+export type UpdateProjectInput = Partial<CreateProjectInput>
+
+export interface ProjectResponse {
+  project: Project
+}
+
+export interface ProjectListResponse {
+  projects: Project[]
+}

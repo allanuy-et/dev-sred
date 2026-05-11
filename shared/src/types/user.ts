@@ -38,3 +38,30 @@ export interface LoginRequest {
 export interface LoginResponse {
   user: Pick<User, 'id' | 'email' | 'firstName' | 'lastName' | 'accessLevel'>
 }
+
+export interface CreateEmployeeInput {
+  email: string
+  password: string
+  firstName: string
+  lastName: string
+  accessLevel: AccessLevel
+  role?: string | null
+  startDate?: string | null
+  paid?: PaidType
+  hoursPerYear?: number
+  regularRate?: number
+  overtimeRate?: number
+  holidayRate?: number
+  specifiedEmployee?: boolean
+  qualifications?: string | null
+}
+
+export type UpdateEmployeeInput = Partial<Omit<CreateEmployeeInput, 'password'>>
+
+export interface EmployeeResponse {
+  employee: User
+}
+
+export interface EmployeeListResponse {
+  employees: User[]
+}

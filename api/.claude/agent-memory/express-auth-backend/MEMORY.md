@@ -1,0 +1,3 @@
+- [User role](user_role.md) — Solo builder on the SR&ED Manager one-day build; prefers terse, no-summary responses.
+- [No validation libs](feedback_no_validation_libs.md) — Hand-written validators only (no Zod/Joi/etc); code-reviewer flags dependency bloat.
+- [Cross-tenant 404](feedback_cross_tenant_404.md) — Return 404 (not 403) on cross-company access to avoid leaking row existence.
