@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node_modules/.bin/tsx --version)",
+      "Bash(timeout 4 yarn workspace @sred/api run dev)",
+      "Bash(../node_modules/.bin/tsx --env-file=../.env -e \"console.log\\('DB:', process.env.DATABASE_URL ? 'SET' : 'UNSET'\\)\")",
+      "Bash(node --help)",
+      "Bash(git -C /Users/paolouy/dev/sred-manager diff --stat README.md .env.example api/package.json .gitignore)",
+      "Bash(git -C /Users/paolouy/dev/sred-manager status --short)",
+      "Bash(git -C /Users/paolouy/dev/sred-manager log --oneline -5)",
+      "Bash(git -C /Users/paolouy/dev/sred-manager log --oneline --all -10)",
+      "Bash(git -C /Users/paolouy/dev/sred-manager show --stat 7c57f37)",
+      "Bash(git -C /Users/paolouy/dev/sred-manager log --oneline -- .gitignore .nvmrc)"
+    ]
+  }
+}

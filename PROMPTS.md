@@ -891,3 +891,12 @@ add gitignore
 
 ### 2026-05-11T18:31:45Z
 commit the changes
+
+### 2026-05-11T18:41:07Z
+Do an analysis on the readme file.And see if this is accurate.Will the API and portal run by just following it?Also update the readme file because we're not deploying this to Vercel. We just need to nail down the instruction so that whoever runs this will be easily be able to
+
+### 2026-05-11T18:52:02Z
+yes
+
+### 2026-05-11T18:54:35Z
+So if someone look at this repo and follow the readme, they will be able to run it?
