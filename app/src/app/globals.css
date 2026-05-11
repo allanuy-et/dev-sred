@@ -27,21 +27,9 @@
   --danger: #dc2626;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0a0a0a;
-    --surface: #111113;
-    --surface-hover: #1c1c20;
-    --border: #27272a;
-    --border-strong: #3f3f46;
-    --text: #fafafa;
-    --text-muted: #a1a1aa;
-    --text-subtle: #71717a;
-    --accent: #818cf8;
-    --accent-hover: #a5b4fc;
-    --accent-soft: #1e1b4b;
-  }
-}
+/* Force light theme — system dark-mode preference is intentionally ignored.
+   Reintroduce a dark variant via a class (e.g. .dark on <html>) if we add a
+   theme toggle later; we don't want OS preference flipping the demo. */
 
 @theme inline {
   --color-bg: var(--bg);
@@ -69,6 +57,7 @@ body {
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   font-size: 16px;            /* modern SaaS baseline (Linear / Vercel / Notion / Stripe) */
   line-height: 1.6;
+  color-scheme: light;        /* keep native widgets (date picker, scrollbar) light regardless of OS preference */
 }
 
 @media print {
