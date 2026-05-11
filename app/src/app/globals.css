@@ -1,11 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  /* Surfaces — pure white. No grays pretending to be white.
-     Cards are distinguished by border + shadow-sm alone. */
-  --bg: #ffffff;
-  --surface: #ffffff;
-  --surface-hover: #f4f4f5;   /* row / ghost button hover only (zinc-100) */
+  /* Page background is a barely-perceptible off-white so cards (pure white)
+     visually float. Matches the reference table aesthetic. */
+  --bg: #fafafa;              /* zinc-50, page background */
+  --surface: #ffffff;         /* cards / panels — pure white */
+  --surface-muted: #f8fafc;   /* slate-50, table thead and other faint blocks */
+  --surface-hover: #f4f4f5;   /* row / ghost button hover (zinc-100) */
 
   /* Borders — cool neutral (zinc family), visible but not heavy. */
   --border: #e4e4e7;
@@ -34,6 +35,7 @@
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
   --color-surface-hover: var(--surface-hover);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);

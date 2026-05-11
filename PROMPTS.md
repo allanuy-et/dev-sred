@@ -776,3 +776,8 @@ Let's update the dashboard screen and instead instead of showing a bunch of tile
 Let's update how the table looks like. Let's occupy the entire width of the screen. And then have the filters on the left side section.Use a card styling to separate the sections.
 
 And have the quick actions on top of the list. Also have a search bar.
+
+### 2026-05-11T15:17:50Z
+I like the styling on this, use it as your reference:
+
+https://github.com/jimmybutton/react-tailwind-table
