@@ -9,6 +9,7 @@ import { Card } from '@/components/Card'
 import { serverApi } from '@/lib/api.server'
 import { getCurrentUser } from '@/lib/auth.server'
 import { formatLongDate, formatRelativeTime } from '@/lib/format'
+import { getIntlLocale, getMessages, interpolate } from '@/lib/i18n'
 
 const ACTIVITY_ICONS: Record<RecentActivityKind, string> = {
   labour: '◷',
@@ -41,13 +42,17 @@ export default async function DashboardPage() {
   // Layout already guards, but this satisfies TS and protects against races.
   if (!user) return null
 
-  const today = formatLongDate(new Date(), user.timezone)
+  const t = getMessages(user.language)
+  const locale = getIntlLocale(user.language)
+  const today = formatLongDate(new Date(), user.timezone, locale)
 
   return (
     <div className="space-y-12">
       <header>
         <h1 className="text-4xl font-semibold tracking-tight">
-          Welcome, {user.firstName} {user.lastName}
+          {interpolate(t.dashboard.welcome, {
+            name: `${user.firstName} ${user.lastName}`,
+          })}
         </h1>
         <p className="mt-2 text-sm text-text-muted">{today}</p>
       </header>
@@ -90,7 +95,7 @@ export default async function DashboardPage() {
                       dateTime={item.ts}
                       className="text-xs text-text-muted"
                     >
-                      {formatRelativeTime(item.ts, user.timezone)}
+                      {formatRelativeTime(item.ts, user.timezone, locale)}
                     </time>
                   </li>
                 ))}

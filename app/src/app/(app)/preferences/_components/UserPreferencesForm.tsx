@@ -15,6 +15,7 @@ import { Button } from '@/components/Button'
 import { Field, SelectField } from '@/components/Field'
 import { ApiError } from '@/lib/api'
 import { clientApi } from '@/lib/api.client'
+import { useMessages } from '@/lib/i18n-context'
 
 export interface UserPreferencesFormProps {
   /**
@@ -34,6 +35,7 @@ export function UserPreferencesForm({
   initialRole,
 }: UserPreferencesFormProps) {
   const router = useRouter()
+  const t = useMessages()
   const [role, setRole] = useState(initialRole ?? '')
   const [timezone, setTimezone] = useState(user.timezone)
   const [language, setLanguage] = useState(user.language)
@@ -73,11 +75,9 @@ export function UserPreferencesForm({
       router.refresh()
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        setError('Your session expired. Please sign in again.')
-      } else if (err instanceof ApiError && err.status === 400) {
-        setError('Please double-check the values — something looked off.')
+        setError(t.auth.sessionExpired)
       } else {
-        setError('Could not save your preferences. Please try again.')
+        setError(t.common.genericError)
       }
     } finally {
       setSubmitting(false)
@@ -87,7 +87,7 @@ export function UserPreferencesForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6" noValidate>
       <Field
-        label="Email"
+        label={t.auth.email}
         type="email"
         value={user.email}
         disabled
@@ -96,7 +96,7 @@ export function UserPreferencesForm({
       />
 
       <Field
-        label="Role / Title"
+        label={t.prefs.role}
         value={role}
         onChange={(e) => setRole(e.currentTarget.value)}
         placeholder="e.g. Senior Engineer"
@@ -104,9 +104,10 @@ export function UserPreferencesForm({
 
       <div className="grid gap-6 sm:grid-cols-2">
         <SelectField
-          label="Language"
+          label={t.prefs.language}
           value={language}
           onChange={(e) => setLanguage(e.currentTarget.value)}
+          helper={t.prefs.languageHelp}
         >
           {SUPPORTED_LANGUAGES.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -116,10 +117,10 @@ export function UserPreferencesForm({
         </SelectField>
 
         <SelectField
-          label="Time zone"
+          label={t.prefs.timezone}
           value={timezone}
           onChange={(e) => setTimezone(e.currentTarget.value)}
-          helper="Dates throughout the app are shown in this timezone."
+          helper={t.prefs.timezoneHelp}
         >
           {SUPPORTED_TIMEZONES.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -143,13 +144,13 @@ export function UserPreferencesForm({
           role="status"
           className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-xs text-success"
         >
-          Preferences saved.
+          {t.prefs.preferencesSaved}
         </p>
       ) : null}
 
       <div className="flex items-center justify-end">
         <Button type="submit" disabled={submitting}>
-          {submitting ? 'Saving…' : 'Save preferences'}
+          {t.prefs.savePreferences}
         </Button>
       </div>
     </form>

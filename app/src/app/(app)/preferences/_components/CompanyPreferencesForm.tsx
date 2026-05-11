@@ -15,6 +15,7 @@ import { Button } from '@/components/Button'
 import { Field, SelectField } from '@/components/Field'
 import { ApiError } from '@/lib/api'
 import { clientApi } from '@/lib/api.client'
+import { useMessages } from '@/lib/i18n-context'
 
 export interface CompanyPreferencesFormProps {
   company: Company
@@ -76,6 +77,7 @@ export function CompanyPreferencesForm({
   canEdit,
 }: CompanyPreferencesFormProps) {
   const router = useRouter()
+  const t = useMessages()
   const [state, setState] = useState<FormState>(() => fromCompany(company))
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -134,13 +136,9 @@ export function CompanyPreferencesForm({
       router.refresh()
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        setError('Your session expired. Please sign in again.')
-      } else if (err instanceof ApiError && err.status === 403) {
-        setError("You don't have permission to change company preferences.")
-      } else if (err instanceof ApiError && err.status === 400) {
-        setError('Please double-check the entries — something looked off.')
+        setError(t.auth.sessionExpired)
       } else {
-        setError('Could not save company preferences. Please try again.')
+        setError(t.common.genericError)
       }
     } finally {
       setSubmitting(false)
@@ -158,8 +156,7 @@ export function CompanyPreferencesForm({
           role="note"
           className="rounded-md border border-border bg-accent-soft px-3 py-2 text-xs text-accent"
         >
-          You&apos;re viewing company preferences in read-only mode. Only an
-          administrator can make changes here.
+          {t.prefs.readOnlyNote}
         </p>
       ) : null}
 
@@ -322,7 +319,7 @@ export function CompanyPreferencesForm({
 
       <div className="flex items-center justify-end">
         <Button type="submit" disabled={fieldsDisabled}>
-          {submitting ? 'Saving…' : 'Save preferences'}
+          {t.common.save}
         </Button>
       </div>
     </form>

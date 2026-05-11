@@ -4,11 +4,13 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 
 import { logout } from '@/lib/auth.client'
+import { useMessages } from '@/lib/i18n-context'
 
 import { Button } from './Button'
 
 export function LogoutButton() {
   const router = useRouter()
+  const t = useMessages()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -20,7 +22,7 @@ export function LogoutButton() {
         router.push('/login')
         router.refresh()
       } catch {
-        setError('Could not sign out')
+        setError(t.common.genericError)
       }
     })
   }
@@ -34,7 +36,7 @@ export function LogoutButton() {
         onClick={handleClick}
         disabled={pending}
       >
-        {pending ? 'Signing out…' : 'Sign out'}
+        {t.auth.signOut}
       </Button>
     </div>
   )

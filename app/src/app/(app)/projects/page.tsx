@@ -22,6 +22,7 @@ import {
 import { serverApi } from '@/lib/api.server'
 import { getCurrentUser } from '@/lib/auth.server'
 import { formatDate } from '@/lib/format'
+import { getIntlLocale } from '@/lib/i18n'
 import { PROJECT_PHASE_LABELS } from '@/lib/project-labels'
 import { parseStatusFilter } from '@/lib/status-filter'
 
@@ -49,6 +50,7 @@ export default async function ProjectsListPage({
   // Layout already gates; this protects TS + races.
   if (!currentUser) return null
   const tz = currentUser.timezone
+  const locale = getIntlLocale(currentUser.language)
 
   const employeeById = new Map(employees.map((e) => [e.id, e]))
 
@@ -118,8 +120,8 @@ export default async function ProjectsListPage({
                     </Link>
                   </TD>
                   <TD>{PROJECT_PHASE_LABELS[p.phase]}</TD>
-                  <TD>{formatDate(p.startDate, tz)}</TD>
-                  <TD>{formatDate(p.dueDate, tz)}</TD>
+                  <TD>{formatDate(p.startDate, tz, locale)}</TD>
+                  <TD>{formatDate(p.dueDate, tz, locale)}</TD>
                   <TD>
                     {p.projectManagerId
                       ? managerName(employeeById.get(p.projectManagerId))

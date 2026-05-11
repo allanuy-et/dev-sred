@@ -3,3 +3,4 @@
 - [API plumbing](project_api_plumbing.md) — rewrite + serverApi/clientApi split for cookie-based auth
 - [React 19 set-state-in-effect lint](feedback_react19_lint.md) — lint fails build when setState is called synchronously in useEffect body
 - [Date/number formatting contract](feedback_format_tz_contract.md) — only format.ts calls Intl/toLocale; tz is required, never browser-default
+- [i18n architecture](project_i18n_architecture.md) — hand-rolled message catalog + provider-throws-if-missing, login uses navigator.language directly

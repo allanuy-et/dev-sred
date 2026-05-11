@@ -36,20 +36,55 @@ export function useTimezone(): string {
 }
 
 /**
- * Tz-bound formatters for Client Components. Stable identity per tz so it
- * can sit in `useMemo` deps safely.
+ * Client-only Intl-locale context. Set once in `<AppShell>` from the session
+ * user's `language` (mapped via `LOCALE_TO_INTL`). Sits alongside
+ * `TimezoneProvider` so the two preferences can move independently, but both
+ * feed into the same `useFormatters()` hook.
+ *
+ * Falls back to `'en-CA'` when read outside a provider — formatter callers
+ * should never be inside `<AppShell>` without a locale, but this keeps the
+ * hook usable from one-off contexts (e.g. login) without a provider.
+ */
+const LocaleContext = createContext<string | null>(null)
+
+export function LocaleProvider({
+  locale,
+  children,
+}: {
+  locale: string
+  children: ReactNode
+}) {
+  return (
+    <LocaleContext.Provider value={locale}>{children}</LocaleContext.Provider>
+  )
+}
+
+/** Get the active Intl locale string, defaulting to `en-CA`. */
+export function useIntlLocale(): string {
+  return useContext(LocaleContext) ?? 'en-CA'
+}
+
+/**
+ * Tz + locale bound formatters for Client Components. Stable identity per
+ * (tz, locale) so it can sit in `useMemo` deps safely.
  */
 export function useFormatters() {
   const tz = useTimezone()
+  const locale = useIntlLocale()
   return useMemo(
     () => ({
-      formatDate: (v: string | null | undefined) => fmt.formatDate(v, tz),
+      formatDate: (v: string | null | undefined) =>
+        fmt.formatDate(v, tz, locale),
       formatDateTime: (v: string | null | undefined) =>
-        fmt.formatDateTime(v, tz),
-      formatRelativeTime: (v: string | Date) => fmt.formatRelativeTime(v, tz),
-      formatHours: fmt.formatHours,
-      formatCurrency: fmt.formatCurrency,
+        fmt.formatDateTime(v, tz, locale),
+      formatRelativeTime: (v: string | Date) =>
+        fmt.formatRelativeTime(v, tz, locale),
+      formatHours: (v: number | null | undefined) => fmt.formatHours(v, locale),
+      formatCurrency: (v: number | null | undefined) =>
+        fmt.formatCurrency(v, locale),
+      formatInteger: (v: number) => fmt.formatInteger(v, locale),
+      formatRate: (v: number) => fmt.formatRate(v, locale),
     }),
-    [tz],
+    [tz, locale],
   )
 }

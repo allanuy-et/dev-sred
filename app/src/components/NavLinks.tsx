@@ -3,19 +3,21 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
+import { useMessages } from '@/lib/i18n-context'
+
 interface NavItem {
   href: string
-  label: string
+  labelKey: keyof ReturnType<typeof useMessages>['nav']
 }
 
 const NAV_ITEMS: ReadonlyArray<NavItem> = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/projects', label: 'Projects' },
-  { href: '/employees', label: 'Employees' },
-  { href: '/labour', label: 'Labour' },
-  { href: '/expenses', label: 'Expenses' },
-  { href: '/reports', label: 'Reports' },
-  { href: '/preferences', label: 'Preferences' },
+  { href: '/dashboard', labelKey: 'dashboard' },
+  { href: '/projects', labelKey: 'projects' },
+  { href: '/employees', labelKey: 'employees' },
+  { href: '/labour', labelKey: 'labour' },
+  { href: '/expenses', labelKey: 'expenses' },
+  { href: '/reports', labelKey: 'reports' },
+  { href: '/preferences', labelKey: 'preferences' },
 ]
 
 function cn(...classes: Array<string | undefined | false>): string {
@@ -24,6 +26,7 @@ function cn(...classes: Array<string | undefined | false>): string {
 
 export function NavLinks() {
   const pathname = usePathname() ?? ''
+  const t = useMessages()
 
   return (
     <nav className="flex items-center gap-1" aria-label="Primary">
@@ -42,7 +45,7 @@ export function NavLinks() {
             )}
             aria-current={active ? 'page' : undefined}
           >
-            {item.label}
+            {t.nav[item.labelKey]}
           </Link>
         )
       })}

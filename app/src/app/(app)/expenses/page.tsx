@@ -18,6 +18,7 @@ import { serverApi } from '@/lib/api.server'
 import { getCurrentUser } from '@/lib/auth.server'
 import { EXPENSE_TYPE_LABELS } from '@/lib/expense-labels'
 import { formatCurrency, formatDate } from '@/lib/format'
+import { getIntlLocale } from '@/lib/i18n'
 
 export default async function ExpensesListPage() {
   const [{ entries, total }, currentUser] = await Promise.all([
@@ -27,6 +28,7 @@ export default async function ExpensesListPage() {
 
   if (!currentUser) return null
   const tz = currentUser.timezone
+  const locale = getIntlLocale(currentUser.language)
 
   return (
     <div className="space-y-12">
@@ -64,21 +66,21 @@ export default async function ExpensesListPage() {
                 <TRLink
                   key={entry.id}
                   href={`/expenses/${entry.id}`}
-                  accessibleLabel={`View expense ${formatDate(entry.date, tz)} — ${entry.employeeName} — ${formatCurrency(entry.cost)}`}
+                  accessibleLabel={`View expense ${formatDate(entry.date, tz, locale)} — ${entry.employeeName} — ${formatCurrency(entry.cost, locale)}`}
                 >
                   <TD>
                     <Link
                       href={`/expenses/${entry.id}`}
                       className="font-medium text-text hover:underline"
                     >
-                      {formatDate(entry.date, tz)}
+                      {formatDate(entry.date, tz, locale)}
                     </Link>
                   </TD>
                   <TD>{entry.employeeName}</TD>
                   <TD>{entry.projectName}</TD>
                   <TD>{EXPENSE_TYPE_LABELS[entry.type]}</TD>
                   <TD align="right" className="tabular-nums">
-                    {formatCurrency(entry.cost)}
+                    {formatCurrency(entry.cost, locale)}
                   </TD>
                 </TRLink>
               ))}

@@ -14,6 +14,7 @@ import { Card } from '@/components/Card'
 import { ApiError } from '@/lib/api'
 import { serverApi } from '@/lib/api.server'
 import { getCurrentUser } from '@/lib/auth.server'
+import { getIntlLocale } from '@/lib/i18n'
 import { LABOUR_TYPE_LABELS } from '@/lib/labour-labels'
 import { EXPENSE_TYPE_LABELS } from '@/lib/expense-labels'
 import { formatCurrency, formatDate, formatHours } from '@/lib/format'
@@ -75,6 +76,7 @@ export default async function EmployeeDetailPage({
   if (!currentUser) return null
 
   const tz = currentUser.timezone
+  const locale = getIntlLocale(currentUser.language)
 
   const [labour, expenses] = await Promise.all([
     loadRecentLabour(employee.id),
@@ -87,11 +89,13 @@ export default async function EmployeeDetailPage({
         employeeId={employee.id}
         entries={labour}
         tz={tz}
+        locale={locale}
       />
       <RecentExpensesCard
         employeeId={employee.id}
         entries={expenses}
         tz={tz}
+        locale={locale}
       />
     </>
   )
@@ -122,10 +126,12 @@ function RecentLabourCard({
   employeeId,
   entries,
   tz,
+  locale,
 }: {
   employeeId: string
   entries: LabourEntryWithRelations[]
   tz: string
+  locale: string
 }) {
   return (
     <Card
@@ -154,7 +160,7 @@ function RecentLabourCard({
                 className="min-w-0 flex-1 hover:underline"
               >
                 <div className="text-xs font-medium text-text-muted">
-                  {formatDate(entry.date, tz)}
+                  {formatDate(entry.date, tz, locale)}
                 </div>
                 <div className="truncate text-sm text-text">
                   {entry.projectName}
@@ -164,7 +170,7 @@ function RecentLabourCard({
                 </div>
               </Link>
               <span className="shrink-0 text-sm tabular-nums text-text">
-                {formatHours(entry.hours)}
+                {formatHours(entry.hours, locale)}
               </span>
             </li>
           ))}
@@ -178,10 +184,12 @@ function RecentExpensesCard({
   employeeId,
   entries,
   tz,
+  locale,
 }: {
   employeeId: string
   entries: ExpenseWithRelations[]
   tz: string
+  locale: string
 }) {
   return (
     <Card
@@ -210,7 +218,7 @@ function RecentExpensesCard({
                 className="min-w-0 flex-1 hover:underline"
               >
                 <div className="text-xs font-medium text-text-muted">
-                  {formatDate(entry.date, tz)}
+                  {formatDate(entry.date, tz, locale)}
                 </div>
                 <div className="truncate text-sm text-text">
                   {entry.projectName}
@@ -220,7 +228,7 @@ function RecentExpensesCard({
                 </div>
               </Link>
               <span className="shrink-0 text-sm tabular-nums text-text">
-                {formatCurrency(entry.cost)}
+                {formatCurrency(entry.cost, locale)}
               </span>
             </li>
           ))}

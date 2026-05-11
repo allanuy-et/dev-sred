@@ -3,14 +3,16 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
+import { useMessages } from '@/lib/i18n-context'
+
 interface PreferencesNavItem {
   href: string
-  label: string
+  labelKey: 'userTab' | 'companyTab'
 }
 
 const ITEMS: ReadonlyArray<PreferencesNavItem> = [
-  { href: '/preferences', label: 'User' },
-  { href: '/preferences/company', label: 'Company' },
+  { href: '/preferences', labelKey: 'userTab' },
+  { href: '/preferences/company', labelKey: 'companyTab' },
 ]
 
 function cn(...classes: Array<string | undefined | false>): string {
@@ -26,6 +28,7 @@ function cn(...classes: Array<string | undefined | false>): string {
  */
 export function PreferencesNav() {
   const pathname = usePathname() ?? ''
+  const t = useMessages()
 
   return (
     <nav
@@ -52,7 +55,7 @@ export function PreferencesNav() {
                     : 'border-transparent text-text-muted hover:border-border-strong hover:text-text',
                 )}
               >
-                {item.label}
+                {t.prefs[item.labelKey]}
               </Link>
             </li>
           )

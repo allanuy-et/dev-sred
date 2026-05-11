@@ -17,6 +17,7 @@ import {
 import { serverApi } from '@/lib/api.server'
 import { getCurrentUser } from '@/lib/auth.server'
 import { formatDate, formatHours } from '@/lib/format'
+import { getIntlLocale } from '@/lib/i18n'
 import { LABOUR_TYPE_LABELS } from '@/lib/labour-labels'
 
 export default async function LabourListPage() {
@@ -27,6 +28,7 @@ export default async function LabourListPage() {
 
   if (!currentUser) return null
   const tz = currentUser.timezone
+  const locale = getIntlLocale(currentUser.language)
 
   return (
     <div className="space-y-12">
@@ -64,21 +66,21 @@ export default async function LabourListPage() {
                 <TRLink
                   key={entry.id}
                   href={`/labour/${entry.id}`}
-                  accessibleLabel={`View labour entry ${formatDate(entry.date, tz)} — ${entry.employeeName} — ${formatHours(entry.hours)}`}
+                  accessibleLabel={`View labour entry ${formatDate(entry.date, tz, locale)} — ${entry.employeeName} — ${formatHours(entry.hours, locale)}`}
                 >
                   <TD>
                     <Link
                       href={`/labour/${entry.id}`}
                       className="font-medium text-text hover:underline"
                     >
-                      {formatDate(entry.date, tz)}
+                      {formatDate(entry.date, tz, locale)}
                     </Link>
                   </TD>
                   <TD>{entry.employeeName}</TD>
                   <TD>{entry.projectName}</TD>
                   <TD>{LABOUR_TYPE_LABELS[entry.labourType]}</TD>
                   <TD align="right" className="tabular-nums">
-                    {formatHours(entry.hours)}
+                    {formatHours(entry.hours, locale)}
                   </TD>
                 </TRLink>
               ))}

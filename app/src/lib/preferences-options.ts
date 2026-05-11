@@ -36,5 +36,7 @@ export const SUPPORTED_LANGUAGES: ReadonlyArray<{
   label: string
 }> = [
   { value: 'en', label: 'English' },
+  { value: 'es', label: 'Español' },
   { value: 'fr', label: 'Français' },
+  { value: 'tl', label: 'Tagalog' },
 ]

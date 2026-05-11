@@ -762,3 +762,6 @@ Final grep confirms zero `toLocaleString` / `toLocaleDateString` / `new Intl.*` 
 - `yarn workspace @sred/app run lint` — exit 0.</result>
 <usage><total_tokens>117748</total_tokens><tool_uses>101</tool_uses><duration_ms>515914</duration_ms></usage>
 </task-notification>
+
+### 2026-05-11T14:19:40Z
+Let's also add localization. Let's do Spanish, Tagalog and French for now.
