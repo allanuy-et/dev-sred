@@ -63,25 +63,21 @@ export default async function ExpensesListPage({
           {from || to ? <> in range</> : null}
         </>
       }
-      filters={
-        <div className="space-y-5">
-          <FilterGroup label="Date range">
-            <DateRangeFilter initialFrom={from} initialTo={to} />
-          </FilterGroup>
-        </div>
-      }
       toolbar={
         <>
-          <div className="w-full sm:max-w-md">
+          <div className="flex-1 sm:max-w-md">
             <SearchBar
               initialValue={q}
               placeholder="Search notes or PO number…"
               ariaLabel="Search expenses"
             />
           </div>
-          <Link href="/expenses/new">
-            <Button>+ Add Expense</Button>
-          </Link>
+          <DateRangeFilter initialFrom={from} initialTo={to} />
+          <div className="sm:ml-auto">
+            <Link href="/expenses/new">
+              <Button>+ Add Expense</Button>
+            </Link>
+          </div>
         </>
       }
     >
@@ -134,22 +130,5 @@ export default async function ExpensesListPage({
         )}
       </Card>
     </ListLayout>
-  )
-}
-
-function FilterGroup({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
-        {label}
-      </p>
-      {children}
-    </div>
   )
 }

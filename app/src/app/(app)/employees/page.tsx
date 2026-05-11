@@ -47,25 +47,21 @@ export default async function EmployeesListPage({
           {q ? <> matching “{q}”</> : null}
         </>
       }
-      filters={
-        <div className="space-y-5">
-          <FilterGroup label="Status">
-            <StatusFilter value={status} />
-          </FilterGroup>
-        </div>
-      }
       toolbar={
         <>
-          <div className="w-full sm:max-w-md">
+          <div className="flex-1 sm:max-w-md">
             <SearchBar
               initialValue={q}
               placeholder="Search by name, email, or role…"
               ariaLabel="Search employees"
             />
           </div>
-          <Link href="/employees/new">
-            <Button>+ Add Employee</Button>
-          </Link>
+          <StatusFilter value={status} />
+          <div className="sm:ml-auto">
+            <Link href="/employees/new">
+              <Button>+ Add Employee</Button>
+            </Link>
+          </div>
         </>
       }
     >
@@ -127,22 +123,5 @@ export default async function EmployeesListPage({
         )}
       </Card>
     </ListLayout>
-  )
-}
-
-function FilterGroup({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
-        {label}
-      </p>
-      {children}
-    </div>
   )
 }

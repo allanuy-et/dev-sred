@@ -1,40 +1,39 @@
 import type { ReactNode } from 'react'
 
-import { Card } from './Card'
-
 export interface ListLayoutProps {
   /** Page title (h1). */
   title: string
   /** Optional subtitle / result count under the title. */
   subtitle?: ReactNode
-  /** Filter controls rendered as a left-side Card on lg+ screens. */
-  filters: ReactNode
-  /** Toolbar content rendered above the table card (search bar + quick actions). */
+  /**
+   * Toolbar row above the table — typically a `<SearchBar>` on the left,
+   * inline filter controls (status, date range, etc.), and an "+ Add …"
+   * action on the right.
+   */
   toolbar: ReactNode
   /** Main content — typically a `<Card>` wrapping a table. */
   children: ReactNode
 }
 
 /**
- * Two-column list layout used by /employees, /projects, /labour, /expenses.
+ * Single-column list layout used by /employees, /projects, /labour, /expenses.
  *
- * - Left column (`lg:` and up): filter Card, ~280px wide.
- * - Right column: toolbar (search + quick actions) above the main content Card.
- * - Below `lg`: filters stack above the main content so the table stays the
- *   first thing in the eye-path on mobile.
+ * - Header (title + result count)
+ * - Toolbar row (search + inline filters + quick action)
+ * - Main content (table Card)
  *
- * Pairs with `<PageContainer>` going full-bleed on list routes — this layout
- * is the one that benefits from the extra horizontal space.
+ * Toolbar wraps below `sm:` so mobile users see filters stack under the
+ * search bar; everything fits on one line at `sm:` and up. Pairs with
+ * `<PageContainer>`'s full-bleed width on list routes.
  */
 export function ListLayout({
   title,
   subtitle,
-  filters,
   toolbar,
   children,
 }: ListLayoutProps) {
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       <header>
         <h1 className="text-4xl font-semibold tracking-tight">{title}</h1>
         {subtitle ? (
@@ -42,18 +41,11 @@ export function ListLayout({
         ) : null}
       </header>
 
-      <div className="grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="order-2 lg:order-1">
-          <Card compact title="Filters">{filters}</Card>
-        </aside>
-
-        <section className="order-1 lg:order-2 space-y-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            {toolbar}
-          </div>
-          {children}
-        </section>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+        {toolbar}
       </div>
+
+      {children}
     </div>
   )
 }

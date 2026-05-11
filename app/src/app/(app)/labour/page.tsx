@@ -63,25 +63,21 @@ export default async function LabourListPage({
           {from || to ? <> in range</> : null}
         </>
       }
-      filters={
-        <div className="space-y-5">
-          <FilterGroup label="Date range">
-            <DateRangeFilter initialFrom={from} initialTo={to} />
-          </FilterGroup>
-        </div>
-      }
       toolbar={
         <>
-          <div className="w-full sm:max-w-md">
+          <div className="flex-1 sm:max-w-md">
             <SearchBar
               initialValue={q}
               placeholder="Search notes…"
               ariaLabel="Search labour entries"
             />
           </div>
-          <Link href="/labour/new">
-            <Button>+ Add Labour</Button>
-          </Link>
+          <DateRangeFilter initialFrom={from} initialTo={to} />
+          <div className="sm:ml-auto">
+            <Link href="/labour/new">
+              <Button>+ Add Labour</Button>
+            </Link>
+          </div>
         </>
       }
     >
@@ -134,22 +130,5 @@ export default async function LabourListPage({
         )}
       </Card>
     </ListLayout>
-  )
-}
-
-function FilterGroup({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
-        {label}
-      </p>
-      {children}
-    </div>
   )
 }

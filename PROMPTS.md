@@ -781,3 +781,6 @@ And have the quick actions on top of the list. Also have a search bar.
 I like the styling on this, use it as your reference:
 
 https://github.com/jimmybutton/react-tailwind-table
+
+### 2026-05-11T15:22:55Z
+Remove the filter section on the left side and just add it in the same row as the search bar.

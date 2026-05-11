@@ -9,6 +9,10 @@ import type {
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { ListLayout } from '@/components/ListLayout'
+import {
+  ProjectTypeFilter,
+  type ProjectTypeFilterValue,
+} from '@/components/ProjectTypeFilter'
 import { SearchBar } from '@/components/SearchBar'
 import { StatusFilter } from '@/components/StatusFilter'
 import {
@@ -33,8 +37,7 @@ function managerName(user: User | undefined): string {
   return `${user.firstName} ${user.lastName}`
 }
 
-type TypeFilter = 'all' | 'sred' | 'internal'
-function parseTypeFilter(raw: string | undefined): TypeFilter {
+function parseTypeFilter(raw: string | undefined): ProjectTypeFilterValue {
   if (raw === 'sred' || raw === 'internal') return raw
   return 'all'
 }
@@ -55,10 +58,9 @@ export default async function ProjectsListPage({
 
   const params = new URLSearchParams({ status })
   if (q.trim().length >= 2) params.set('q', q.trim())
-  // Project-type filter is applied client-side because the backend list
-  // endpoint doesn't take a `?type=` filter yet (and we don't need to add
-  // one — the data set is small enough that filtering after fetch is fine).
 
+  // The backend list endpoint doesn't take ?type= yet; we filter after the
+  // fetch. The data set is small enough this is a non-issue.
   const [{ projects: allProjects }, { employees }, currentUser] = await Promise.all([
     serverApi<ProjectListResponse>(`/projects?${params.toString()}`),
     serverApi<EmployeeListResponse>('/employees?status=all'),
@@ -85,28 +87,22 @@ export default async function ProjectsListPage({
           {q ? <> matching “{q}”</> : null}
         </>
       }
-      filters={
-        <div className="space-y-5">
-          <FilterGroup label="Status">
-            <StatusFilter value={status} />
-          </FilterGroup>
-          <FilterGroup label="Type">
-            <TypeFilterLinks current={typeFilter} status={status} q={q} />
-          </FilterGroup>
-        </div>
-      }
       toolbar={
         <>
-          <div className="w-full sm:max-w-md">
+          <div className="flex-1 sm:max-w-md">
             <SearchBar
               initialValue={q}
               placeholder="Search by name or description…"
               ariaLabel="Search projects"
             />
           </div>
-          <Link href="/projects/new">
-            <Button>+ Add Project</Button>
-          </Link>
+          <StatusFilter value={status} />
+          <ProjectTypeFilter value={typeFilter} />
+          <div className="sm:ml-auto">
+            <Link href="/projects/new">
+              <Button>+ Add Project</Button>
+            </Link>
+          </div>
         </>
       }
     >
@@ -176,67 +172,5 @@ export default async function ProjectsListPage({
         )}
       </Card>
     </ListLayout>
-  )
-}
-
-function FilterGroup({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
-        {label}
-      </p>
-      {children}
-    </div>
-  )
-}
-
-function TypeFilterLinks({
-  current,
-  status,
-  q,
-}: {
-  current: TypeFilter
-  status: 'active' | 'inactive' | 'all'
-  q: string
-}) {
-  const options: Array<{ value: TypeFilter; label: string }> = [
-    { value: 'all', label: 'All' },
-    { value: 'sred', label: 'SR&ED' },
-    { value: 'internal', label: 'Internal' },
-  ]
-  function hrefFor(value: TypeFilter): string {
-    const params = new URLSearchParams()
-    if (status !== 'active') params.set('status', status)
-    if (q.trim().length >= 2) params.set('q', q.trim())
-    if (value !== 'all') params.set('type', value)
-    const qs = params.toString()
-    return qs ? `/projects?${qs}` : '/projects'
-  }
-  return (
-    <div className="flex flex-col gap-1">
-      {options.map((opt) => {
-        const active = opt.value === current
-        return (
-          <Link
-            key={opt.value}
-            href={hrefFor(opt.value)}
-            className={`block rounded-md px-2 py-1.5 text-sm ${
-              active
-                ? 'bg-accent-soft text-accent font-medium'
-                : 'text-text-muted hover:bg-surface-hover hover:text-text'
-            }`}
-            aria-current={active ? 'page' : undefined}
-          >
-            {opt.label}
-          </Link>
-        )
-      })}
-    </div>
   )
 }
