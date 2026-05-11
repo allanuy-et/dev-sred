@@ -16,22 +16,36 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-export default async function NewExpensePage() {
+export default async function NewExpensePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ projectId?: string }>
+}) {
+  const { projectId: rawProjectId } = await searchParams
   const [employees, projects] = await Promise.all([
     loadEmployees(),
     loadProjects(),
   ])
 
+  // Pre-select project from `?projectId=` when present and valid. Used by the
+  // "Add expense" quick-action on the project detail page.
+  const preselectedProjectId = projects.find((p) => p.id === rawProjectId)?.id
+  const isFromProject = Boolean(preselectedProjectId)
+
   const initial: ExpenseFormInitial = {
     date: todayIso(),
     employeeId: employees[0]?.id ?? '',
-    projectId: projects[0]?.id ?? '',
+    projectId: preselectedProjectId ?? projects[0]?.id ?? '',
     cost: '',
     poNumber: '',
     type: 'materials',
     objectiveEvidence: 'none',
     notes: '',
   }
+
+  const returnHref = isFromProject
+    ? `/projects/${preselectedProjectId}`
+    : '/expenses'
 
   return (
     <div className="space-y-12">
@@ -43,10 +57,10 @@ export default async function NewExpensePage() {
           </p>
         </div>
         <Link
-          href="/expenses"
+          href={returnHref}
           className="text-sm font-medium text-text-muted hover:text-text"
         >
-          ← Back to expenses
+          ← {isFromProject ? 'Back to project' : 'Back to expenses'}
         </Link>
       </header>
 
@@ -56,7 +70,8 @@ export default async function NewExpensePage() {
           initial={initial}
           employees={employees}
           projects={projects}
-          onCancelHref="/expenses"
+          onSuccessHref={returnHref}
+          onCancelHref={returnHref}
         />
       </Card>
     </div>

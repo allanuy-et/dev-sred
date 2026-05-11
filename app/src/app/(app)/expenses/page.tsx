@@ -1,17 +1,17 @@
 import Link from 'next/link'
 
-import type { ExpenseListResponse } from '@sred/shared'
+import type { ExpenseListResponse, ExpenseWithRelations } from '@sred/shared'
 
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { DateRangeFilter } from '@/components/DateRangeFilter'
 import { ListLayout } from '@/components/ListLayout'
 import { SearchBar } from '@/components/SearchBar'
+import { SortableTH, type SortDirection } from '@/components/SortableTH'
 import {
   EmptyTableState,
   TBody,
   TD,
-  TH,
   THead,
   TR,
   TRLink,
@@ -29,15 +29,59 @@ function safeIsoDate(raw: string | undefined): string {
   return typeof raw === 'string' && ISO_DATE_RE.test(raw) ? raw : ''
 }
 
+type SortKey = 'date' | 'employee' | 'project' | 'type' | 'cost'
+
+function parseSortKey(raw: string | undefined): SortKey | null {
+  if (
+    raw === 'date' ||
+    raw === 'employee' ||
+    raw === 'project' ||
+    raw === 'type' ||
+    raw === 'cost'
+  ) {
+    return raw
+  }
+  return null
+}
+
+function parseSortDir(raw: string | undefined): SortDirection {
+  return raw === 'desc' ? 'desc' : 'asc'
+}
+
+const COMPARATORS: Record<
+  SortKey,
+  (a: ExpenseWithRelations, b: ExpenseWithRelations) => number
+> = {
+  date: (a, b) => a.date.localeCompare(b.date),
+  employee: (a, b) => a.employeeName.localeCompare(b.employeeName),
+  project: (a, b) => a.projectName.localeCompare(b.projectName),
+  type: (a, b) => a.type.localeCompare(b.type),
+  cost: (a, b) => a.cost - b.cost,
+}
+
 export default async function ExpensesListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; from?: string; to?: string }>
+  searchParams: Promise<{
+    q?: string
+    from?: string
+    to?: string
+    sortBy?: string
+    sortDir?: string
+  }>
 }) {
-  const { q: rawQ, from: rawFrom, to: rawTo } = await searchParams
+  const {
+    q: rawQ,
+    from: rawFrom,
+    to: rawTo,
+    sortBy: rawSortBy,
+    sortDir: rawSortDir,
+  } = await searchParams
   const q = typeof rawQ === 'string' ? rawQ : ''
   const from = safeIsoDate(rawFrom)
   const to = safeIsoDate(rawTo)
+  const sortBy = parseSortKey(rawSortBy)
+  const sortDir = parseSortDir(rawSortDir)
 
   const params = new URLSearchParams({ limit: '50' })
   if (q.trim().length >= 2) params.set('q', q.trim())
@@ -52,6 +96,12 @@ export default async function ExpensesListPage({
   if (!currentUser) return null
   const tz = currentUser.timezone
   const locale = getIntlLocale(currentUser.language)
+
+  const sortedEntries = sortBy
+    ? [...entries].sort(
+        (a, b) => COMPARATORS[sortBy](a, b) * (sortDir === 'desc' ? -1 : 1),
+      )
+    : entries
 
   return (
     <ListLayout
@@ -82,7 +132,7 @@ export default async function ExpensesListPage({
       }
     >
       <Card>
-        {entries.length === 0 ? (
+        {sortedEntries.length === 0 ? (
           <EmptyTableState>
             {q || from || to
               ? <>No expenses match these filters.</>
@@ -95,15 +145,30 @@ export default async function ExpensesListPage({
           <Table>
             <THead>
               <TR>
-                <TH>Date</TH>
-                <TH>Employee</TH>
-                <TH>Project</TH>
-                <TH>Type</TH>
-                <TH align="right">Cost</TH>
+                <SortableTH sortKey="date" currentSortKey={sortBy} currentSortDir={sortDir}>
+                  Date
+                </SortableTH>
+                <SortableTH sortKey="employee" currentSortKey={sortBy} currentSortDir={sortDir}>
+                  Employee
+                </SortableTH>
+                <SortableTH sortKey="project" currentSortKey={sortBy} currentSortDir={sortDir}>
+                  Project
+                </SortableTH>
+                <SortableTH sortKey="type" currentSortKey={sortBy} currentSortDir={sortDir}>
+                  Type
+                </SortableTH>
+                <SortableTH
+                  sortKey="cost"
+                  currentSortKey={sortBy}
+                  currentSortDir={sortDir}
+                  align="right"
+                >
+                  Cost
+                </SortableTH>
               </TR>
             </THead>
             <TBody>
-              {entries.map((entry) => (
+              {sortedEntries.map((entry) => (
                 <TRLink
                   key={entry.id}
                   href={`/expenses/${entry.id}`}

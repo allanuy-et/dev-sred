@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import type {
   EmployeeListResponse,
+  Project,
   ProjectListResponse,
   User,
 } from '@sred/shared'
@@ -14,12 +15,12 @@ import {
   type ProjectTypeFilterValue,
 } from '@/components/ProjectTypeFilter'
 import { SearchBar } from '@/components/SearchBar'
+import { SortableTH, type SortDirection } from '@/components/SortableTH'
 import { StatusFilter } from '@/components/StatusFilter'
 import {
   EmptyTableState,
   TBody,
   TD,
-  TH,
   THead,
   TR,
   TRLink,
@@ -42,25 +43,56 @@ function parseTypeFilter(raw: string | undefined): ProjectTypeFilterValue {
   return 'all'
 }
 
+type SortKey = 'name' | 'phase' | 'startDate' | 'dueDate' | 'manager'
+
+function cmpString(a: string | null | undefined, b: string | null | undefined) {
+  return (a ?? '').localeCompare(b ?? '')
+}
+
+function parseSortKey(raw: string | undefined): SortKey | null {
+  if (
+    raw === 'name' ||
+    raw === 'phase' ||
+    raw === 'startDate' ||
+    raw === 'dueDate' ||
+    raw === 'manager'
+  ) {
+    return raw
+  }
+  return null
+}
+
+function parseSortDir(raw: string | undefined): SortDirection {
+  return raw === 'desc' ? 'desc' : 'asc'
+}
+
 export default async function ProjectsListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; type?: string; q?: string }>
+  searchParams: Promise<{
+    status?: string
+    type?: string
+    q?: string
+    sortBy?: string
+    sortDir?: string
+  }>
 }) {
   const {
     status: rawStatus,
     type: rawType,
     q: rawQ,
+    sortBy: rawSortBy,
+    sortDir: rawSortDir,
   } = await searchParams
   const status = parseStatusFilter(rawStatus)
   const typeFilter = parseTypeFilter(rawType)
   const q = typeof rawQ === 'string' ? rawQ : ''
+  const sortBy = parseSortKey(rawSortBy)
+  const sortDir = parseSortDir(rawSortDir)
 
   const params = new URLSearchParams({ status })
   if (q.trim().length >= 2) params.set('q', q.trim())
 
-  // The backend list endpoint doesn't take ?type= yet; we filter after the
-  // fetch. The data set is small enough this is a non-issue.
   const [{ projects: allProjects }, { employees }, currentUser] = await Promise.all([
     serverApi<ProjectListResponse>(`/projects?${params.toString()}`),
     serverApi<EmployeeListResponse>('/employees?status=all'),
@@ -71,12 +103,32 @@ export default async function ProjectsListPage({
   const tz = currentUser.timezone
   const locale = getIntlLocale(currentUser.language)
 
-  const projects =
+  const employeeById = new Map(employees.map((e) => [e.id, e]))
+
+  // Type filter is applied client-side (the backend list endpoint doesn't
+  // accept `?type=` and the data set is small enough for in-memory filtering).
+  const filtered =
     typeFilter === 'all'
       ? allProjects
       : allProjects.filter((p) => p.type === typeFilter)
 
-  const employeeById = new Map(employees.map((e) => [e.id, e]))
+  const comparators: Record<SortKey, (a: Project, b: Project) => number> = {
+    name: (a, b) => cmpString(a.name, b.name),
+    phase: (a, b) => cmpString(a.phase, b.phase),
+    startDate: (a, b) => cmpString(a.startDate, b.startDate),
+    dueDate: (a, b) => cmpString(a.dueDate, b.dueDate),
+    manager: (a, b) =>
+      cmpString(
+        managerName(employeeById.get(a.projectManagerId ?? '')),
+        managerName(employeeById.get(b.projectManagerId ?? '')),
+      ),
+  }
+
+  const projects = sortBy
+    ? [...filtered].sort(
+        (a, b) => comparators[sortBy](a, b) * (sortDir === 'desc' ? -1 : 1),
+      )
+    : filtered
 
   return (
     <ListLayout
@@ -126,11 +178,21 @@ export default async function ProjectsListPage({
           <Table>
             <THead>
               <TR>
-                <TH>Name</TH>
-                <TH>Phase</TH>
-                <TH>Start Date</TH>
-                <TH>Due Date</TH>
-                <TH>Manager</TH>
+                <SortableTH sortKey="name" currentSortKey={sortBy} currentSortDir={sortDir}>
+                  Name
+                </SortableTH>
+                <SortableTH sortKey="phase" currentSortKey={sortBy} currentSortDir={sortDir}>
+                  Phase
+                </SortableTH>
+                <SortableTH sortKey="startDate" currentSortKey={sortBy} currentSortDir={sortDir}>
+                  Start Date
+                </SortableTH>
+                <SortableTH sortKey="dueDate" currentSortKey={sortBy} currentSortDir={sortDir}>
+                  Due Date
+                </SortableTH>
+                <SortableTH sortKey="manager" currentSortKey={sortBy} currentSortDir={sortDir}>
+                  Manager
+                </SortableTH>
               </TR>
             </THead>
             <TBody>

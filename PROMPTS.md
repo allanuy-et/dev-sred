@@ -789,3 +789,14 @@ Remove the filter section on the left side and just add it in the same row as th
 Remove this on the projects table. + 
 
 And do not occupy the entire width of the page. Maybe just use the default styling.
+
+### 2026-05-11T15:30:44Z
+Can you make the column headers clickable and when it's clicked Let's apply sorting, ascending and descending.
+
+We also need to redesign the project details page.
+
+Instead of having the back to projects button and upright added right before the project title. And just use a Chevron left icon.
+
+Remove the S R D narrative section
+add a right section on this page showing the related labor or expenses for this project.
+Also add a quick action to add labor and expense and then wins and when you create a record from this page auto-select the project

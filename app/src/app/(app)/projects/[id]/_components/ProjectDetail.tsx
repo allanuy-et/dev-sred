@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import type { Project } from '@sred/shared'
 
@@ -22,18 +22,20 @@ import {
   ProjectForm,
   projectToFormInitial,
 } from '../../_components/ProjectForm'
-import { NarrativeButton } from './NarrativeButton'
 
 export interface ProjectDetailProps {
   project: Project
   employees: SelectOption[]
   parentProjects: SelectOption[]
+  /** Right-side aside content — typically "Recent labour" + "Recent expenses". */
+  aside: ReactNode
 }
 
 export function ProjectDetail({
   project,
   employees,
   parentProjects,
+  aside,
 }: ProjectDetailProps) {
   const router = useRouter()
   const { formatDate } = useFormatters()
@@ -81,8 +83,8 @@ export function ProjectDetail({
   }
 
   if (editing) {
-    // Edit mode renders full-width — no aside. The form needs the room and the
-    // narrative panel isn't actionable while editing.
+    // Edit mode renders full-width — no aside. The form needs the room and
+    // the related-records lists aren't actionable while editing.
     return (
       <Card>
         <ProjectForm
@@ -99,11 +101,7 @@ export function ProjectDetail({
   }
 
   return (
-    <DetailLayout
-      aside={
-        <NarrativeButton projectId={project.id} projectName={project.name} />
-      }
-    >
+    <DetailLayout aside={aside} asidePosition="right">
       <Card>
         <dl className="grid gap-x-6 gap-y-6 sm:grid-cols-2">
           <DescriptionItem

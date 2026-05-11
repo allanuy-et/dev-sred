@@ -1,18 +1,18 @@
 import Link from 'next/link'
 
-import type { EmployeeListResponse } from '@sred/shared'
+import type { EmployeeListResponse, User } from '@sred/shared'
 
 import { Badge } from '@/components/Badge'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { ListLayout } from '@/components/ListLayout'
 import { SearchBar } from '@/components/SearchBar'
+import { SortableTH, type SortDirection } from '@/components/SortableTH'
 import { StatusFilter } from '@/components/StatusFilter'
 import {
   EmptyTableState,
   TBody,
   TD,
-  TH,
   THead,
   TR,
   TRLink,
@@ -22,14 +22,47 @@ import { serverApi } from '@/lib/api.server'
 import { ACCESS_LEVEL_LABELS } from '@/lib/employee-labels'
 import { parseStatusFilter } from '@/lib/status-filter'
 
+type SortKey = 'name' | 'role' | 'access' | 'status'
+
+const SORT_COMPARATORS: Record<SortKey, (a: User, b: User) => number> = {
+  name: (a, b) =>
+    `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`),
+  role: (a, b) => (a.role ?? '').localeCompare(b.role ?? ''),
+  access: (a, b) => a.accessLevel.localeCompare(b.accessLevel),
+  status: (a, b) => a.status.localeCompare(b.status),
+}
+
+function parseSortKey(raw: string | undefined): SortKey | null {
+  if (raw === 'name' || raw === 'role' || raw === 'access' || raw === 'status') {
+    return raw
+  }
+  return null
+}
+
+function parseSortDir(raw: string | undefined): SortDirection {
+  return raw === 'desc' ? 'desc' : 'asc'
+}
+
 export default async function EmployeesListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string }>
+  searchParams: Promise<{
+    status?: string
+    q?: string
+    sortBy?: string
+    sortDir?: string
+  }>
 }) {
-  const { status: rawStatus, q: rawQ } = await searchParams
+  const {
+    status: rawStatus,
+    q: rawQ,
+    sortBy: rawSortBy,
+    sortDir: rawSortDir,
+  } = await searchParams
   const status = parseStatusFilter(rawStatus)
   const q = typeof rawQ === 'string' ? rawQ : ''
+  const sortBy = parseSortKey(rawSortBy)
+  const sortDir = parseSortDir(rawSortDir)
 
   const params = new URLSearchParams({ status })
   if (q.trim().length >= 2) params.set('q', q.trim())
@@ -37,13 +70,19 @@ export default async function EmployeesListPage({
     `/employees?${params.toString()}`,
   )
 
+  const sortedEmployees = sortBy
+    ? [...employees].sort((a, b) =>
+        SORT_COMPARATORS[sortBy](a, b) * (sortDir === 'desc' ? -1 : 1),
+      )
+    : employees
+
   return (
     <ListLayout
       title="Employees"
       subtitle={
         <>
-          {employees.length}{' '}
-          {employees.length === 1 ? 'employee' : 'employees'}
+          {sortedEmployees.length}{' '}
+          {sortedEmployees.length === 1 ? 'employee' : 'employees'}
           {q ? <> matching “{q}”</> : null}
         </>
       }
@@ -66,7 +105,7 @@ export default async function EmployeesListPage({
       }
     >
       <Card>
-        {employees.length === 0 ? (
+        {sortedEmployees.length === 0 ? (
           <EmptyTableState>
             {q
               ? <>No employees match this search.</>
@@ -85,14 +124,22 @@ export default async function EmployeesListPage({
           <Table>
             <THead>
               <TR>
-                <TH>Name</TH>
-                <TH>Role / Title</TH>
-                <TH>Access</TH>
-                <TH>Status</TH>
+                <SortableTH sortKey="name" currentSortKey={sortBy} currentSortDir={sortDir}>
+                  Name
+                </SortableTH>
+                <SortableTH sortKey="role" currentSortKey={sortBy} currentSortDir={sortDir}>
+                  Role / Title
+                </SortableTH>
+                <SortableTH sortKey="access" currentSortKey={sortBy} currentSortDir={sortDir}>
+                  Access
+                </SortableTH>
+                <SortableTH sortKey="status" currentSortKey={sortBy} currentSortDir={sortDir}>
+                  Status
+                </SortableTH>
               </TR>
             </THead>
             <TBody>
-              {employees.map((emp) => (
+              {sortedEmployees.map((emp) => (
                 <TRLink
                   key={emp.id}
                   href={`/employees/${emp.id}`}
