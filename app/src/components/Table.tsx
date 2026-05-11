@@ -1,5 +1,7 @@
 import type { ReactNode, TableHTMLAttributes } from 'react'
 
+import { ClickableRow } from './ClickableRow'
+
 function cn(...classes: Array<string | undefined | false>): string {
   return classes.filter(Boolean).join(' ')
 }
@@ -17,33 +19,67 @@ export function Table({
 }
 
 export function THead({ children }: { children: ReactNode }) {
-  return <thead>{children}</thead>
+  return <thead className="bg-surface-muted">{children}</thead>
 }
 
 export function TBody({ children }: { children: ReactNode }) {
   return <tbody className="divide-y divide-border">{children}</tbody>
 }
 
+/**
+ * Static table row. Used for non-list rows (totals, summary rows). For list
+ * rows that navigate to a detail page, use {@link TRLink} so the entire row
+ * is clickable + keyboard-accessible.
+ */
 export function TR({
   children,
   className,
-  interactive,
 }: {
   children: ReactNode
   className?: string
-  /** Apply a hover background — useful for rows that act as links. */
-  interactive?: boolean
 }) {
   return (
     <tr
       className={cn(
-        interactive && 'hover:bg-surface-hover',
         'border-b border-border last:border-b-0',
         className,
       )}
     >
       {children}
     </tr>
+  )
+}
+
+/**
+ * Clickable table row that navigates to `href` on click, Enter, or Space.
+ *
+ * The first cell should still contain a real `<Link href={href}>` so:
+ *   - SSR + crawlers can follow the link
+ *   - keyboard / screen-reader users can right-click "Open in new tab"
+ *   - the row's `role="link"` + `aria-label` carries semantic meaning
+ *
+ * Secondary actions inside the row (delete, dropdown) MUST wrap their handler
+ * with `e.stopPropagation()` so the row navigation doesn't fight the action.
+ */
+export function TRLink({
+  href,
+  accessibleLabel,
+  children,
+  className,
+}: {
+  href: string
+  accessibleLabel: string
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <ClickableRow
+      href={href}
+      accessibleLabel={accessibleLabel}
+      className={className}
+    >
+      {children}
+    </ClickableRow>
   )
 }
 
@@ -60,7 +96,7 @@ export function TH({
     <th
       scope="col"
       className={cn(
-        'px-4 py-2 text-xs font-medium uppercase tracking-wide text-text-muted',
+        'px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-text-muted',
         align === 'right'
           ? 'text-right'
           : align === 'center'

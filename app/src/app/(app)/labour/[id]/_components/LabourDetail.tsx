@@ -146,7 +146,7 @@ function DescriptionItem({
 }) {
   return (
     <div className={className}>
-      <dt className="text-xs font-medium uppercase tracking-wide text-text-muted">
+      <dt className="text-xs font-medium uppercase tracking-wider text-text-muted">
         {label}
       </dt>
       <dd className="mt-1 text-sm text-text">{value}</dd>

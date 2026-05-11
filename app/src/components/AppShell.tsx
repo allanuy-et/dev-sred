@@ -15,7 +15,7 @@ export function AppShell({ user, children }: AppShellProps) {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="no-print sticky top-0 z-10 h-14 border-b border-border bg-surface">
-        <div className="mx-auto flex h-full w-full max-w-[1120px] items-center justify-between gap-6 px-6">
+        <div className="mx-auto flex h-full w-full max-w-[1200px] items-center justify-between gap-6 px-8 lg:px-12">
           <div className="flex h-full items-center gap-8">
             <span className="text-sm font-semibold tracking-tight">
               SR&amp;ED Manager
@@ -32,7 +32,9 @@ export function AppShell({ user, children }: AppShellProps) {
         </div>
       </header>
       <main className="flex-1">
-        <div className="mx-auto w-full max-w-[1120px] px-6 py-8">{children}</div>
+        <div className="mx-auto w-full max-w-[1200px] px-8 py-10 lg:px-12 lg:py-12">
+          {children}
+        </div>
       </main>
     </div>
   )

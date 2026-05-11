@@ -1,6 +1,6 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react'
 
-type Variant = 'primary' | 'secondary' | 'destructive'
+type Variant = 'primary' | 'secondary' | 'destructive' | 'ghost'
 type Size = 'default' | 'sm'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -9,18 +9,19 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  'inline-flex items-center justify-center gap-1.5 rounded-md font-medium shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 disabled:pointer-events-none'
+  'inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 disabled:pointer-events-none'
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-accent text-white hover:bg-accent-hover',
+  primary: 'bg-accent text-white shadow-sm hover:bg-accent-hover',
   secondary:
-    'border border-border bg-surface text-text hover:bg-surface-hover',
-  destructive: 'bg-danger text-white hover:bg-red-700',
+    'border border-border bg-surface text-text shadow-sm hover:bg-surface-hover',
+  destructive: 'bg-danger text-white shadow-sm hover:bg-red-700',
+  ghost: 'text-text hover:bg-surface-hover',
 }
 
 const sizes: Record<Size, string> = {
-  default: 'px-3 py-1.5 text-sm',
-  sm: 'px-2 py-1 text-xs',
+  default: 'px-3.5 py-2 text-sm',
+  sm: 'px-2.5 py-1.5 text-xs',
 }
 
 function cn(...classes: Array<string | undefined | false>): string {

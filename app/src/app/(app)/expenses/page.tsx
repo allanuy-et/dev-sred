@@ -11,6 +11,7 @@ import {
   TH,
   THead,
   TR,
+  TRLink,
   Table,
 } from '@/components/Table'
 import { serverApi } from '@/lib/api.server'
@@ -23,11 +24,11 @@ export default async function ExpensesListPage() {
   )
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-center justify-between">
+    <div className="space-y-8">
+      <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Expenses</h1>
-          <p className="text-sm text-text-muted">
+          <h1 className="text-3xl font-semibold tracking-tight">Expenses</h1>
+          <p className="mt-1 text-sm text-text-muted">
             {total} {total === 1 ? 'entry' : 'entries'} recorded.
           </p>
         </div>
@@ -51,28 +52,30 @@ export default async function ExpensesListPage() {
                 <TH>Project</TH>
                 <TH>Type</TH>
                 <TH align="right">Cost</TH>
-                <TH align="right">Actions</TH>
               </TR>
             </THead>
             <TBody>
               {entries.map((entry) => (
-                <TR key={entry.id} interactive>
-                  <TD>{formatDate(entry.date)}</TD>
+                <TRLink
+                  key={entry.id}
+                  href={`/expenses/${entry.id}`}
+                  accessibleLabel={`View expense ${formatDate(entry.date)} — ${entry.employeeName} — ${formatCurrency(entry.cost)}`}
+                >
+                  <TD>
+                    <Link
+                      href={`/expenses/${entry.id}`}
+                      className="font-medium text-text hover:underline"
+                    >
+                      {formatDate(entry.date)}
+                    </Link>
+                  </TD>
                   <TD>{entry.employeeName}</TD>
                   <TD>{entry.projectName}</TD>
                   <TD>{EXPENSE_TYPE_LABELS[entry.type]}</TD>
                   <TD align="right" className="tabular-nums">
                     {formatCurrency(entry.cost)}
                   </TD>
-                  <TD align="right">
-                    <Link
-                      href={`/expenses/${entry.id}`}
-                      className="text-sm font-medium text-accent hover:underline"
-                    >
-                      View
-                    </Link>
-                  </TD>
-                </TR>
+                </TRLink>
               ))}
             </TBody>
           </Table>

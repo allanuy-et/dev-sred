@@ -150,9 +150,9 @@ export function ReportsClient({ projects }: ReportsClientProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <Card className="no-print">
-        <div className="mb-4 flex items-center gap-1 border-b border-border">
+        <div className="mb-6 flex items-center gap-1 border-b border-border">
           <TabButton
             active={view === 'monthly'}
             onClick={() => setView('monthly')}

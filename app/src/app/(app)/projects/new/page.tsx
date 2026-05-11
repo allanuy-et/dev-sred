@@ -27,11 +27,13 @@ export default async function NewProjectPage() {
   ])
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-center justify-between">
+    <div className="space-y-8">
+      <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">New project</h1>
-          <p className="text-sm text-text-muted">
+          <h1 className="text-3xl font-semibold tracking-tight">
+            New project
+          </h1>
+          <p className="mt-1 text-sm text-text-muted">
             Create a project to track labour and expenses against.
           </p>
         </div>

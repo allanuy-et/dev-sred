@@ -12,7 +12,7 @@ function cn(...classes: Array<string | undefined | false>): string {
 }
 
 const controlBase =
-  'w-full rounded-md border bg-surface px-3 py-1.5 text-sm text-text placeholder:text-text-muted focus:outline-2 focus:outline-offset-1 focus:outline-accent disabled:opacity-50'
+  'w-full rounded-md border bg-surface px-3 py-2 text-sm text-text placeholder:text-text-subtle focus:outline-2 focus:outline-offset-1 focus:outline-accent disabled:opacity-50'
 
 interface BaseProps {
   label: ReactNode

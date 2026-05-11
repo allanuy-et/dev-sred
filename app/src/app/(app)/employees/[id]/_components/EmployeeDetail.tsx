@@ -1,12 +1,14 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import type { User } from '@sred/shared'
 
 import { Badge } from '@/components/Badge'
 import { Button } from '@/components/Button'
+import { Card } from '@/components/Card'
+import { DetailLayout } from '@/components/DetailLayout'
 import { ApiError } from '@/lib/api'
 import { clientApi } from '@/lib/api.client'
 import {
@@ -22,6 +24,13 @@ import {
 
 export interface EmployeeDetailProps {
   employee: User
+  /**
+   * Pre-rendered aside content (recent labour / recent expenses cards). The
+   * page fetches and renders these so the detail itself stays focused on the
+   * primary record. In edit mode the aside is hidden — the form takes the full
+   * width.
+   */
+  aside: ReactNode
 }
 
 function formatRate(value: number): string {
@@ -31,7 +40,7 @@ function formatRate(value: number): string {
   })}/hr`
 }
 
-export function EmployeeDetail({ employee }: EmployeeDetailProps) {
+export function EmployeeDetail({ employee, aside }: EmployeeDetailProps) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [pending, setPending] = useState(false)
@@ -73,112 +82,118 @@ export function EmployeeDetail({ employee }: EmployeeDetailProps) {
   }
 
   if (editing) {
+    // Edit mode renders full-width — no aside. The form needs the breathing
+    // room and the related-content panels aren't relevant while editing.
     return (
-      <EmployeeForm
-        mode="edit"
-        employeeId={employee.id}
-        initial={userToFormInitial(employee)}
-        onSuccessHref={`/employees/${employee.id}`}
-        onCancelHref={`/employees/${employee.id}`}
-      />
+      <Card>
+        <EmployeeForm
+          mode="edit"
+          employeeId={employee.id}
+          initial={userToFormInitial(employee)}
+          onSuccessHref={`/employees/${employee.id}`}
+          onCancelHref={`/employees/${employee.id}`}
+        />
+      </Card>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-        <DescriptionItem
-          label="Status"
-          value={
-            isActive ? (
-              <Badge variant="active">Active</Badge>
-            ) : (
-              <Badge variant="neutral">Inactive</Badge>
-            )
-          }
-        />
-        <DescriptionItem
-          label="Access level"
-          value={ACCESS_LEVEL_LABELS[employee.accessLevel]}
-        />
-        <DescriptionItem label="Role / Title" value={employee.role ?? '—'} />
-        <DescriptionItem
-          label="Start date"
-          value={formatDate(employee.startDate)}
-        />
-        <DescriptionItem
-          label="Paid"
-          value={PAID_TYPE_LABELS[employee.paid]}
-        />
-        <DescriptionItem
-          label="Hours per year"
-          value={
-            <span className="tabular-nums">
-              {employee.hoursPerYear.toLocaleString()}
-            </span>
-          }
-        />
-        <DescriptionItem
-          label="Regular rate"
-          value={
-            <span className="tabular-nums">
-              {formatRate(employee.regularRate)}
-            </span>
-          }
-        />
-        <DescriptionItem
-          label="Overtime rate"
-          value={
-            <span className="tabular-nums">
-              {formatRate(employee.overtimeRate)}
-            </span>
-          }
-        />
-        <DescriptionItem
-          label="Holiday rate"
-          value={
-            <span className="tabular-nums">
-              {formatRate(employee.holidayRate)}
-            </span>
-          }
-        />
-        <DescriptionItem
-          label="Specified employee"
-          value={employee.specifiedEmployee ? 'Yes' : 'No'}
-        />
-        <DescriptionItem
-          label="Qualifications"
-          value={employee.qualifications ?? '—'}
-          className="sm:col-span-2"
-        />
-      </dl>
+    <DetailLayout aside={aside}>
+      <Card>
+        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+          <DescriptionItem
+            label="Status"
+            value={
+              isActive ? (
+                <Badge variant="active">Active</Badge>
+              ) : (
+                <Badge variant="neutral">Inactive</Badge>
+              )
+            }
+          />
+          <DescriptionItem
+            label="Access level"
+            value={ACCESS_LEVEL_LABELS[employee.accessLevel]}
+          />
+          <DescriptionItem label="Role / Title" value={employee.role ?? '—'} />
+          <DescriptionItem
+            label="Start date"
+            value={formatDate(employee.startDate)}
+          />
+          <DescriptionItem
+            label="Paid"
+            value={PAID_TYPE_LABELS[employee.paid]}
+          />
+          <DescriptionItem
+            label="Hours per year"
+            value={
+              <span className="tabular-nums">
+                {employee.hoursPerYear.toLocaleString()}
+              </span>
+            }
+          />
+          <DescriptionItem
+            label="Regular rate"
+            value={
+              <span className="tabular-nums">
+                {formatRate(employee.regularRate)}
+              </span>
+            }
+          />
+          <DescriptionItem
+            label="Overtime rate"
+            value={
+              <span className="tabular-nums">
+                {formatRate(employee.overtimeRate)}
+              </span>
+            }
+          />
+          <DescriptionItem
+            label="Holiday rate"
+            value={
+              <span className="tabular-nums">
+                {formatRate(employee.holidayRate)}
+              </span>
+            }
+          />
+          <DescriptionItem
+            label="Specified employee"
+            value={employee.specifiedEmployee ? 'Yes' : 'No'}
+          />
+          <DescriptionItem
+            label="Qualifications"
+            value={employee.qualifications ?? '—'}
+            className="sm:col-span-2"
+          />
+        </dl>
 
-      {error ? (
-        <p
-          role="alert"
-          className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-danger"
-        >
-          {error}
-        </p>
-      ) : null}
+        {error ? (
+          <p
+            role="alert"
+            className="mt-6 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-danger"
+          >
+            {error}
+          </p>
+        ) : null}
 
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          variant={isActive ? 'destructive' : 'secondary'}
-          onClick={handleToggleStatus}
-          disabled={pending}
-        >
-          {pending
-            ? isActive
-              ? 'Deactivating…'
-              : 'Reactivating…'
-            : isActive
-              ? 'Deactivate'
-              : 'Reactivate'}
-        </Button>
-        <Button onClick={() => setEditing(true)}>Edit</Button>
-      </div>
-    </div>
+        <div className="mt-6 flex items-center justify-end gap-2">
+          <Button
+            variant={isActive ? 'destructive' : 'secondary'}
+            onClick={handleToggleStatus}
+            disabled={pending}
+          >
+            {pending
+              ? isActive
+                ? 'Deactivating…'
+                : 'Reactivating…'
+              : isActive
+                ? 'Deactivate'
+                : 'Reactivate'}
+          </Button>
+          <Button onClick={() => setEditing(true)}>Edit</Button>
+        </div>
+      </Card>
+    </DetailLayout>
   )
 }
 
@@ -193,7 +208,7 @@ function DescriptionItem({
 }) {
   return (
     <div className={className}>
-      <dt className="text-xs font-medium uppercase tracking-wide text-text-muted">
+      <dt className="text-xs font-medium uppercase tracking-wider text-text-muted">
         {label}
       </dt>
       <dd className="mt-1 text-sm text-text">{value}</dd>

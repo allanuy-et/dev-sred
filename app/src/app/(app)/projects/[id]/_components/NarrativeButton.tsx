@@ -5,6 +5,7 @@ import { useState } from 'react'
 import type { NarrativeResponse } from '@sred/shared'
 
 import { Button } from '@/components/Button'
+import { Card } from '@/components/Card'
 import { ApiError } from '@/lib/api'
 import { clientApi } from '@/lib/api.client'
 
@@ -13,7 +14,14 @@ export interface NarrativeButtonProps {
   projectName: string
 }
 
-export function NarrativeButton({ projectId, projectName }: NarrativeButtonProps) {
+/**
+ * Renders the SR&ED narrative generator as a compact aside card. Lives in the
+ * project detail's left column via {@link DetailLayout}.
+ */
+export function NarrativeButton({
+  projectId,
+  projectName,
+}: NarrativeButtonProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<NarrativeResponse | null>(null)
@@ -62,17 +70,19 @@ export function NarrativeButton({ projectId, projectName }: NarrativeButtonProps
   }
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-base font-medium">SR&amp;ED narrative</h2>
-          <p className="mt-1 text-xs text-text-muted">
-            Draft a one-paragraph SR&amp;ED narrative from this project&rsquo;s
-            labour-entry notes (last 90 days). Uses Claude.
-          </p>
-        </div>
+    <Card compact title="SR&ED narrative">
+      <p className="text-xs text-text-muted">
+        Draft a one-paragraph SR&amp;ED narrative from this project&rsquo;s
+        labour-entry notes (last 90 days). Uses Claude.
+      </p>
+
+      <div className="mt-4">
         <Button onClick={handleGenerate} disabled={loading}>
-          {loading ? 'Generating…' : result ? 'Regenerate' : 'Generate narrative'}
+          {loading
+            ? 'Generating…'
+            : result
+              ? 'Regenerate'
+              : 'Generate narrative'}
         </Button>
       </div>
 
@@ -107,6 +117,6 @@ export function NarrativeButton({ projectId, projectName }: NarrativeButtonProps
           </div>
         </div>
       ) : null}
-    </div>
+    </Card>
   )
 }

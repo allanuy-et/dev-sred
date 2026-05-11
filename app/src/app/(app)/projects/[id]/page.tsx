@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation'
 
 import type { Project, ProjectResponse } from '@sred/shared'
 
-import { Card } from '@/components/Card'
 import { ApiError } from '@/lib/api'
 import { serverApi } from '@/lib/api.server'
 
@@ -41,11 +40,13 @@ export default async function ProjectDetailPage({
   const parentOptions = allProjects.filter((p) => p.id !== project.id)
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-center justify-between">
+    <div className="space-y-8">
+      <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">{project.name}</h1>
-          <p className="text-sm text-text-muted">
+          <h1 className="text-3xl font-semibold tracking-tight">
+            {project.name}
+          </h1>
+          <p className="mt-1 text-sm text-text-muted">
             {project.type === 'sred' ? 'SR&ED' : 'Internal'} project
           </p>
         </div>
@@ -57,13 +58,11 @@ export default async function ProjectDetailPage({
         </Link>
       </header>
 
-      <Card>
-        <ProjectDetail
-          project={project}
-          employees={employees}
-          parentProjects={parentOptions}
-        />
-      </Card>
+      <ProjectDetail
+        project={project}
+        employees={employees}
+        parentProjects={parentOptions}
+      />
     </div>
   )
 }

@@ -16,6 +16,7 @@ import {
   TH,
   THead,
   TR,
+  TRLink,
   Table,
 } from '@/components/Table'
 import { serverApi } from '@/lib/api.server'
@@ -46,11 +47,11 @@ export default async function ProjectsListPage({
   const employeeById = new Map(employees.map((e) => [e.id, e]))
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-center justify-between gap-4">
+    <div className="space-y-8">
+      <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Projects</h1>
-          <p className="text-sm text-text-muted">
+          <h1 className="text-3xl font-semibold tracking-tight">Projects</h1>
+          <p className="mt-1 text-sm text-text-muted">
             {projects.length}{' '}
             {projects.length === 1 ? 'project' : 'projects'} shown.
           </p>
@@ -84,16 +85,19 @@ export default async function ProjectsListPage({
                 <TH>Start Date</TH>
                 <TH>Due Date</TH>
                 <TH>Manager</TH>
-                <TH align="right">Actions</TH>
               </TR>
             </THead>
             <TBody>
               {projects.map((p) => (
-                <TR key={p.id} interactive>
+                <TRLink
+                  key={p.id}
+                  href={`/projects/${p.id}`}
+                  accessibleLabel={`View project ${p.name}`}
+                >
                   <TD>
                     <Link
                       href={`/projects/${p.id}`}
-                      className="inline-flex items-center gap-1.5 font-medium text-text hover:text-accent"
+                      className="inline-flex items-center gap-1.5 font-medium text-text hover:underline"
                     >
                       {p.type === 'sred' ? (
                         <span
@@ -115,15 +119,7 @@ export default async function ProjectsListPage({
                       ? managerName(employeeById.get(p.projectManagerId))
                       : '—'}
                   </TD>
-                  <TD align="right">
-                    <Link
-                      href={`/projects/${p.id}`}
-                      className="text-sm font-medium text-accent hover:underline"
-                    >
-                      View
-                    </Link>
-                  </TD>
-                </TR>
+                </TRLink>
               ))}
             </TBody>
           </Table>

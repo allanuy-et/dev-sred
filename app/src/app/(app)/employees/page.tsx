@@ -12,6 +12,7 @@ import {
   TH,
   THead,
   TR,
+  TRLink,
   Table,
 } from '@/components/Table'
 import { StatusFilter } from '@/components/StatusFilter'
@@ -32,11 +33,11 @@ export default async function EmployeesListPage({
   )
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-center justify-between gap-4">
+    <div className="space-y-8">
+      <header className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Employees</h1>
-          <p className="text-sm text-text-muted">
+          <h1 className="text-3xl font-semibold tracking-tight">Employees</h1>
+          <p className="mt-1 text-sm text-text-muted">
             {employees.length}{' '}
             {employees.length === 1 ? 'employee' : 'employees'} shown.
           </p>
@@ -69,16 +70,19 @@ export default async function EmployeesListPage({
                 <TH>Role / Title</TH>
                 <TH>Access</TH>
                 <TH>Status</TH>
-                <TH align="right">Actions</TH>
               </TR>
             </THead>
             <TBody>
               {employees.map((emp) => (
-                <TR key={emp.id} interactive>
+                <TRLink
+                  key={emp.id}
+                  href={`/employees/${emp.id}`}
+                  accessibleLabel={`View employee ${emp.firstName} ${emp.lastName}`}
+                >
                   <TD>
                     <Link
                       href={`/employees/${emp.id}`}
-                      className="font-medium text-text hover:text-accent"
+                      className="font-medium text-text hover:underline"
                     >
                       {emp.firstName} {emp.lastName}
                     </Link>
@@ -93,15 +97,7 @@ export default async function EmployeesListPage({
                       <Badge variant="neutral">Inactive</Badge>
                     )}
                   </TD>
-                  <TD align="right">
-                    <Link
-                      href={`/employees/${emp.id}`}
-                      className="text-sm font-medium text-accent hover:underline"
-                    >
-                      View
-                    </Link>
-                  </TD>
-                </TR>
+                </TRLink>
               ))}
             </TBody>
           </Table>

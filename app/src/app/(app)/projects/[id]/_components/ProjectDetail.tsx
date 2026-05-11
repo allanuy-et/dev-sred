@@ -7,6 +7,8 @@ import type { Project } from '@sred/shared'
 
 import { Badge } from '@/components/Badge'
 import { Button } from '@/components/Button'
+import { Card } from '@/components/Card'
+import { DetailLayout } from '@/components/DetailLayout'
 import { ApiError } from '@/lib/api'
 import { clientApi } from '@/lib/api.client'
 import { formatDate } from '@/lib/format'
@@ -78,97 +80,105 @@ export function ProjectDetail({
   }
 
   if (editing) {
+    // Edit mode renders full-width — no aside. The form needs the room and the
+    // narrative panel isn't actionable while editing.
     return (
-      <ProjectForm
-        mode="edit"
-        projectId={project.id}
-        initial={projectToFormInitial(project)}
-        employees={employees}
-        parentProjects={parentProjects}
-        onSuccessHref={`/projects/${project.id}`}
-        onCancelHref={`/projects/${project.id}`}
-      />
+      <Card>
+        <ProjectForm
+          mode="edit"
+          projectId={project.id}
+          initial={projectToFormInitial(project)}
+          employees={employees}
+          parentProjects={parentProjects}
+          onSuccessHref={`/projects/${project.id}`}
+          onCancelHref={`/projects/${project.id}`}
+        />
+      </Card>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-        <DescriptionItem
-          label="Status"
-          value={
-            isActive ? (
-              <Badge variant="active">Active</Badge>
-            ) : (
-              <Badge variant="neutral">Inactive</Badge>
-            )
-          }
-        />
-        <DescriptionItem
-          label="Type"
-          value={PROJECT_TYPE_LABELS[project.type]}
-        />
-        <DescriptionItem
-          label="Phase"
-          value={
-            project.phase === 'concept' ? (
-              <Badge variant="concept">
-                {PROJECT_PHASE_LABELS[project.phase]}
-              </Badge>
-            ) : (
-              PROJECT_PHASE_LABELS[project.phase]
-            )
-          }
-        />
-        <DescriptionItem
-          label="Global"
-          value={project.isGlobal ? 'Yes' : 'No'}
-        />
-        <DescriptionItem
-          label="Start date"
-          value={formatDate(project.startDate)}
-        />
-        <DescriptionItem
-          label="Due date"
-          value={formatDate(project.dueDate)}
-        />
-        <DescriptionItem label="Project manager" value={managerLabel} />
-        <DescriptionItem label="Parent project" value={parentLabel} />
-        <DescriptionItem
-          label="Description"
-          value={project.description ?? '—'}
-          className="sm:col-span-2"
-        />
-      </dl>
+    <DetailLayout
+      aside={
+        <NarrativeButton projectId={project.id} projectName={project.name} />
+      }
+    >
+      <Card>
+        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+          <DescriptionItem
+            label="Status"
+            value={
+              isActive ? (
+                <Badge variant="active">Active</Badge>
+              ) : (
+                <Badge variant="neutral">Inactive</Badge>
+              )
+            }
+          />
+          <DescriptionItem
+            label="Type"
+            value={PROJECT_TYPE_LABELS[project.type]}
+          />
+          <DescriptionItem
+            label="Phase"
+            value={
+              project.phase === 'concept' ? (
+                <Badge variant="concept">
+                  {PROJECT_PHASE_LABELS[project.phase]}
+                </Badge>
+              ) : (
+                PROJECT_PHASE_LABELS[project.phase]
+              )
+            }
+          />
+          <DescriptionItem
+            label="Global"
+            value={project.isGlobal ? 'Yes' : 'No'}
+          />
+          <DescriptionItem
+            label="Start date"
+            value={formatDate(project.startDate)}
+          />
+          <DescriptionItem
+            label="Due date"
+            value={formatDate(project.dueDate)}
+          />
+          <DescriptionItem label="Project manager" value={managerLabel} />
+          <DescriptionItem label="Parent project" value={parentLabel} />
+          <DescriptionItem
+            label="Description"
+            value={project.description ?? '—'}
+            className="sm:col-span-2"
+          />
+        </dl>
 
-      {error ? (
-        <p
-          role="alert"
-          className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-danger"
-        >
-          {error}
-        </p>
-      ) : null}
+        {error ? (
+          <p
+            role="alert"
+            className="mt-6 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-danger"
+          >
+            {error}
+          </p>
+        ) : null}
 
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          variant={isActive ? 'destructive' : 'secondary'}
-          onClick={handleToggleStatus}
-          disabled={pending}
-        >
-          {pending
-            ? isActive
-              ? 'Deactivating…'
-              : 'Reactivating…'
-            : isActive
-              ? 'Deactivate'
-              : 'Reactivate'}
-        </Button>
-        <Button onClick={() => setEditing(true)}>Edit</Button>
-      </div>
-
-      <NarrativeButton projectId={project.id} projectName={project.name} />
-    </div>
+        <div className="mt-6 flex items-center justify-end gap-2">
+          <Button
+            variant={isActive ? 'destructive' : 'secondary'}
+            onClick={handleToggleStatus}
+            disabled={pending}
+          >
+            {pending
+              ? isActive
+                ? 'Deactivating…'
+                : 'Reactivating…'
+              : isActive
+                ? 'Deactivate'
+                : 'Reactivate'}
+          </Button>
+          <Button onClick={() => setEditing(true)}>Edit</Button>
+        </div>
+      </Card>
+    </DetailLayout>
   )
 }
 
@@ -183,7 +193,7 @@ function DescriptionItem({
 }) {
   return (
     <div className={className}>
-      <dt className="text-xs font-medium uppercase tracking-wide text-text-muted">
+      <dt className="text-xs font-medium uppercase tracking-wider text-text-muted">
         {label}
       </dt>
       <dd className="mt-1 text-sm text-text">{value}</dd>

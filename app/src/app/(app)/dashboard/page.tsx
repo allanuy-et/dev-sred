@@ -49,12 +49,12 @@ export default async function DashboardPage() {
   })
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">
+    <div className="space-y-8">
+      <header>
+        <h1 className="text-3xl font-semibold tracking-tight">
           Welcome, {user.firstName} {user.lastName}
         </h1>
-        <p className="text-sm text-text-muted">{today}</p>
+        <p className="mt-1 text-sm text-text-muted">{today}</p>
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2">
@@ -63,14 +63,12 @@ export default async function DashboardPage() {
           label="Projects"
           value={data.stats?.projectsCount}
           helper={
-            data.stats
-              ? `${data.stats.projectsInSred} SR&ED`
-              : undefined
+            data.stats ? `${data.stats.projectsInSred} SR&ED` : undefined
           }
         />
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card title="Recent Activity">
             {data.activity.length === 0 ? (
@@ -126,11 +124,11 @@ function StatCard({
   helper?: string
 }) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
+    <div className="rounded-lg border border-border bg-surface p-8 shadow-sm">
+      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
         {label}
       </p>
-      <p className="mt-2 text-3xl font-semibold tabular-nums">
+      <p className="mt-2 text-4xl font-semibold tracking-tight tabular-nums">
         {value ?? '—'}
       </p>
       {helper ? (

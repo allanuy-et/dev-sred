@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
 
-export type BadgeVariant = 'active' | 'concept' | 'neutral'
+export type BadgeVariant = 'active' | 'concept' | 'info' | 'neutral'
 
 const variants: Record<BadgeVariant, string> = {
   active: 'bg-green-50 text-success border-green-200',
   concept: 'bg-amber-50 text-warning border-amber-200',
-  neutral: 'bg-stone-100 text-text-muted border-border',
+  info: 'bg-accent-soft text-accent border-indigo-200',
+  neutral: 'bg-surface-muted text-text-muted border-border',
 }
 
 function cn(...classes: Array<string | undefined | false>): string {
