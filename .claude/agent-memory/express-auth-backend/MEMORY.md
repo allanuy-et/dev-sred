@@ -1,0 +1,2 @@
+- [Project: SR&ED Manager one-day build](project_sred_oneday.md) — one-day coder challenge (demo 2026-05-13), Phase 1 backend done
+- [Feedback: no validation library](feedback_no_validation_lib.md) — hand-write field validators; don't add deps

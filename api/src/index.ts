@@ -1,6 +1,11 @@
-import express from 'express'
+import express, { type NextFunction, type Request, type Response } from 'express'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
+import authRouter from './routes/auth.js'
+import labourRouter from './routes/labour.js'
+import dashboardRouter from './routes/dashboard.js'
+import employeesRouter from './routes/employees.js'
+import projectsRouter from './routes/projects.js'
 
 const app = express()
 const PORT = Number(process.env.PORT ?? 4000)
@@ -16,6 +21,23 @@ app.use(
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, ts: new Date().toISOString() })
+})
+
+app.use('/auth', authRouter)
+app.use('/labour', labourRouter)
+app.use('/dashboard', dashboardRouter)
+app.use('/employees', employeesRouter)
+app.use('/projects', projectsRouter)
+
+// Central error handler — keeps individual handlers thin. Logs server-side,
+// returns a generic 500 to clients so we don't leak internals.
+// Note: Express identifies error-handling middleware by the 4-argument
+// signature, so `_req` and `_next` are load-bearing even though we don't use
+// them. Renaming with leading underscores marks them as intentionally unused.
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('[api] unhandled error:', err)
+  if (res.headersSent) return
+  res.status(500).json({ error: 'Internal server error' })
 })
 
 if (process.env.VERCEL !== '1') {

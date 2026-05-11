@@ -32,3 +32,31 @@ export interface LabourEntryWithRelations extends LabourEntry {
   employeeName: string
   projectName: string
 }
+
+// Inputs accepted by POST /labour and PATCH /labour/:id.
+// Server validates these — do not trust the shapes blindly.
+export interface CreateLabourInput {
+  date: string
+  employeeId: string
+  projectId: string
+  hours: number
+  labourTime: LabourTime
+  labourType: LabourType
+  objectiveEvidence: ObjectiveEvidence
+  notes?: string | null
+}
+
+export type UpdateLabourInput = Partial<CreateLabourInput>
+
+export interface LabourListResponse {
+  entries: LabourEntryWithRelations[]
+  total: number
+}
+
+export interface LabourEntryResponse {
+  entry: LabourEntry
+}
+
+export interface LabourEntryWithRelationsResponse {
+  entry: LabourEntryWithRelations
+}

@@ -18,20 +18,23 @@ Login: `scott@etcweb.com` / `password`
 
 ## Run locally
 
-Requires Node 22+, Yarn 4, and a Postgres database.
+Requires Node 22+, Yarn 4, and a Postgres database (Docker or installed locally).
 
 ```bash
 git clone <repo-url> sred-manager
 cd sred-manager
 
-cp .env.example .env       # then edit DATABASE_URL and JWT_SECRET
+# Easiest: bring up Postgres in Docker
+docker compose up -d
+
+cp .env.example .env       # defaults match the docker-compose Postgres
 
 yarn install
 yarn db:setup              # apply schema.sql + seed
 yarn dev                   # starts /app on :3000 and /api on :4000
 ```
 
-Open <http://localhost:3000> and log in.
+Open <http://localhost:3000> and log in. To stop and wipe the DB: `docker compose down -v`.
 
 ## Project layout
 

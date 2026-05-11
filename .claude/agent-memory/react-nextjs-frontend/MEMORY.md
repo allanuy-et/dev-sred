@@ -1,0 +1,3 @@
+- [Stack snapshot](project_stack.md) — Next.js 16 + React 19 + Tailwind v4 monorepo with @sred/shared types
+- [Design system rules](feedback_design_system.md) — must read shared/design-system.md before any UI; no hard-coded hex
+- [API plumbing](project_api_plumbing.md) — rewrite + serverApi/clientApi split for cookie-based auth

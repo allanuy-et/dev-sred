@@ -32,3 +32,11 @@ export function cookieOptions() {
     maxAge: TOKEN_TTL_SECONDS * 1000,
   }
 }
+
+// For res.clearCookie: same attributes minus maxAge, so the browser sees a
+// real "delete" rather than a 7-day clear cookie. Per RFC 6265 the cookie
+// attributes (path, secure, sameSite) must match for the delete to apply.
+export function clearCookieOptions() {
+  const { maxAge: _maxAge, ...rest } = cookieOptions()
+  return rest
+}

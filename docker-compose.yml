@@ -1,0 +1,28 @@
+# Local Postgres for the bare-metal dev path.
+# Production uses Vercel Postgres via DATABASE_URL — this file is dev only.
+#
+# Usage:
+#   docker compose up -d     # start
+#   docker compose down -v   # stop and wipe data
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sred_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sred_manager
+    ports:
+      - "5432:5432"
+    volumes:
+      - sred_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sred_manager"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  sred_pgdata:
