@@ -8,7 +8,6 @@ import { LocaleProvider, TimezoneProvider } from '@/lib/timezone-context'
 import { GlobalSearch } from './GlobalSearch'
 import { LogoutButton } from './LogoutButton'
 import { NavLinks } from './NavLinks'
-import { PageContainer } from './PageContainer'
 
 export interface AppShellProps {
   user: SessionUser
@@ -39,7 +38,9 @@ export function AppShell({ user, children }: AppShellProps) {
               </div>
             </header>
             <main className="flex-1">
-              <PageContainer>{children}</PageContainer>
+              <div className="mx-auto w-full max-w-[1360px] px-8 py-10 lg:px-16 lg:py-16">
+                {children}
+              </div>
             </main>
           </div>
         </LocaleProvider>

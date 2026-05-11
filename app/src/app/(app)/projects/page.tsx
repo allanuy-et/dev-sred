@@ -143,17 +143,8 @@ export default async function ProjectsListPage({
                   <TD>
                     <Link
                       href={`/projects/${p.id}`}
-                      className="inline-flex items-center gap-1.5 font-medium text-text hover:underline"
+                      className="font-medium text-text hover:underline"
                     >
-                      {p.type === 'sred' ? (
-                        <span
-                          aria-label="SR&ED project"
-                          title="SR&ED project"
-                          className="text-warning"
-                        >
-                          +
-                        </span>
-                      ) : null}
                       {p.name}
                     </Link>
                   </TD>

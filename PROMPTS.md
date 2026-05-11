@@ -784,3 +784,8 @@ https://github.com/jimmybutton/react-tailwind-table
 
 ### 2026-05-11T15:22:55Z
 Remove the filter section on the left side and just add it in the same row as the search bar.
+
+### 2026-05-11T15:26:36Z
+Remove this on the projects table. + 
+
+And do not occupy the entire width of the page. Maybe just use the default styling.
