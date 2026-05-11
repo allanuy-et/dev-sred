@@ -9,7 +9,58 @@ section is maintained by the `prompts-curator` agent and is what we'll discuss W
 
 ## Curated highlights
 
-_(populated by `prompts-curator` agent at milestone points)_
+_Phase 1 — backend + frontend agents, build-error triage, code review._
+_For the pre-hook planning arc, see [`prompts-planning.md`](./prompts-planning.md)._
+
+---
+
+### 1. `[worked]` Spawning two agents in one sentence with implicit contract enforcement
+
+> *"Escape GitHub and Vercel for now. I want to do the phase one But spawn the backend agent for this. And spawn the front end agent for the portal work"*
+
+**Technique:** A single casual sentence kicked off two parallel sub-agents and simultaneously deferred two whole concerns (GitHub, Vercel). The lightweight phrasing worked because the plan file already held the API contract — the agents had a shared spec to align on without the trigger message needing to repeat it.
+
+---
+
+### 2. `[worked]` Build error pasted verbatim, zero paraphrasing
+
+> *"You're importing a module that depends on `next/headers`. This API is only available in Server Components [...] Import traces: Client Component Browser: ./app/src/lib/api.ts [...] ./app/src/app/login/page.tsx"*
+
+**Technique:** The full Next.js build output — including the import trace — was pasted raw. The import chain (`login/page.tsx` → `api.ts` → `next/headers`) is what made the root cause unambiguous. Paraphrasing "there's a next/headers error" would have left the trace hidden and likely produced a surface-level fix; the trace made the structural split (`api.ts` / `api.server.ts` / `api.client.ts`) the obvious and correct answer.
+
+---
+
+### 3. `[planning]` Parallel agent spawn as a forcing function for tight contracts
+
+> *(Phase 1 spawn — see raw log task notifications at 12:27 and 12:29)*
+
+**Technique:** Spawning backend and frontend agents in parallel meant each had to be given a complete, self-contained brief up front — you can't iterate with a parallel agent the way you can in a single conversation. The constraint forced the API contract to be written out before either agent touched code, which is why the shared types in `@sred/shared` existed before the frontend tried to consume them.
+
+---
+
+### 4. `[fought back]` Reviewer caught stale fallback that would have silently 400'd every form
+
+> *(Code-reviewer finding — raw log task notification at 12:40)*
+> *"The fallback ids `'seed-employee-scott'` and `'seed-project-rd'` are NOT valid UUIDs. The backend's `isUuid` regex [...] will reject any POST/PATCH that uses them with HTTP 400 [...] the `if (!res) return FALLBACK` branch [...] makes the form render but every submission silently 400s."*
+
+**Technique:** The code-reviewer agent was given the diff and the backend's own validation rules in scope — so it could cross-reference the frontend's fallback ids against the backend's UUID guard, a check no single-agent pass would have caught. The "silently 400s" framing identified not just a bug but the failure mode visible to the demo audience.
+
+---
+
+### 5. `[fought back]` Reviewer caught type re-declaration divergence against shared package
+
+> *(Code-reviewer finding — raw log task notification at 12:40)*
+> *"The dashboard re-declares `ActivityKind = 'labour' | 'expense' | 'project' | 'employee'` [which] diverges from the shared `RecentActivityKind = 'labour' | 'project'`. A judge asking 'where do your shared types live?' will see this immediately."*
+
+**Technique:** The reviewer was primed to evaluate for *judging criteria*, not just correctness — so it framed the divergence as a demo-day liability ("A judge asking...") rather than a lint warning. This dual framing (bug + presentation risk) makes the fix obviously high-priority.
+
+---
+
+### 6. `[recovery]` Short "what is next" to re-anchor after Phase 0
+
+> *"ok good to go now. what is next in our plan?"*
+
+**Technique:** After a restart, a two-word check-in ("good to go") plus a plan-anchored question put the plan file back in the driver's seat instead of relying on conversation memory. The question is almost trivially short, but it routes everything through the written plan rather than re-summarizing context from scratch.
 
 ## Raw log
 
@@ -240,4 +291,15 @@ Relevant file paths:
 - /Users/paolouy/dev/sred-manager/shared/src/types/dashboard.ts
 - /Users/paolouy/dev/sred-manager/shared/src/types/labour.ts</result>
 <usage><total_tokens>78551</total_tokens><tool_uses>56</tool_uses><duration_ms>242321</duration_ms></usage>
+</task-notification>
+
+### 2026-05-11T12:43:27Z
+<task-notification>
+<task-id>a45fff968a185a1a6</task-id>
+<tool-use-id>toolu_01DVLPCwPCgobEDG2M1NMYqG</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-paolouy-dev-sred-manager/da4a2ff4-02a7-4ea2-94e6-d8ef8d9de34c/tasks/a45fff968a185a1a6.output</output-file>
+<status>completed</status>
+<summary>Agent "Curate Phase 1 prompts into PROMPTS.md" completed</summary>
+<result>Curated 6 prompts. Top entry: `[worked]` — Build error pasted verbatim, zero paraphrasing.</result>
+<usage><total_tokens>24993</total_tokens><tool_uses>7</tool_uses><duration_ms>57949</duration_ms></usage>
 </task-notification>
