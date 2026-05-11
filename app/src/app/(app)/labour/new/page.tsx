@@ -1,5 +1,6 @@
 import { BackChevron } from '@/components/BackChevron'
 import { Card } from '@/components/Card'
+import { getCurrentUser } from '@/lib/auth.server'
 
 import { LabourForm, type LabourFormInitial } from '../_components/LabourForm'
 import { loadEmployees, loadProjects } from '../_lib/selectOptions'
@@ -14,10 +15,13 @@ export default async function NewLabourPage({
   searchParams: Promise<{ projectId?: string }>
 }) {
   const { projectId: rawProjectId } = await searchParams
-  const [employees, projects] = await Promise.all([
+  const [employees, projects, currentUser] = await Promise.all([
     loadEmployees(),
     loadProjects(),
+    getCurrentUser(),
   ])
+  const lockedToEmployeeId =
+    currentUser?.accessLevel === 'standard' ? currentUser.id : undefined
 
   // Pre-select project from `?projectId=` when present and valid. Used by the
   // "Add labour" quick-action on the project detail page.
@@ -26,7 +30,7 @@ export default async function NewLabourPage({
 
   const initial: LabourFormInitial = {
     date: todayIso(),
-    employeeId: employees[0]?.id ?? '',
+    employeeId: lockedToEmployeeId ?? employees[0]?.id ?? '',
     projectId: preselectedProjectId ?? projects[0]?.id ?? '',
     hours: '',
     labourTime: 'regular',
@@ -64,6 +68,7 @@ export default async function NewLabourPage({
           initial={initial}
           employees={employees}
           projects={projects}
+          lockedToEmployeeId={lockedToEmployeeId}
           onSuccessHref={returnHref}
           onCancelHref={returnHref}
         />

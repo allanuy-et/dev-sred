@@ -105,3 +105,64 @@ CREATE TABLE IF NOT EXISTS expenses (
 
 CREATE INDEX IF NOT EXISTS expenses_project_date_idx ON expenses(project_id, date DESC);
 CREATE INDEX IF NOT EXISTS expenses_date_idx ON expenses(date DESC);
+
+-- Wage history: one row per rate change. `users.regular/overtime/holiday_rate`
+-- remains as the denormalized "current" snapshot; wage_history is the source
+-- of truth for any historical lookup (e.g. computing labour cost using the
+-- rate that was in effect on each entry's date).
+CREATE TABLE IF NOT EXISTS wage_history (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  employee_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  effective_date  DATE NOT NULL,
+  regular_rate    NUMERIC(10,2) NOT NULL CHECK (regular_rate >= 0),
+  overtime_rate   NUMERIC(10,2) NOT NULL CHECK (overtime_rate >= 0),
+  holiday_rate    NUMERIC(10,2) NOT NULL CHECK (holiday_rate >= 0),
+  note            TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS wage_history_emp_eff_idx
+  ON wage_history(employee_id, effective_date DESC);
+
+-- Backfill: every user without any wage_history rows gets a seed row anchored
+-- to their start_date (falling back to today) using their current rate values.
+-- Idempotent — only inserts when no rows exist for the user.
+INSERT INTO wage_history (employee_id, effective_date, regular_rate, overtime_rate, holiday_rate, note)
+SELECT
+  u.id,
+  COALESCE(u.start_date, CURRENT_DATE),
+  u.regular_rate,
+  u.overtime_rate,
+  u.holiday_rate,
+  'Initial rate (backfilled)'
+FROM users u
+WHERE NOT EXISTS (SELECT 1 FROM wage_history wh WHERE wh.employee_id = u.id);
+
+-- File attachments. The legacy `file_path` column on labour_entries/expenses
+-- is retained for back-compat but unused — new uploads go through these
+-- tables. ON DELETE CASCADE keeps attachments tied to their parent record.
+CREATE TABLE IF NOT EXISTS labour_attachments (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  labour_entry_id UUID NOT NULL REFERENCES labour_entries(id) ON DELETE CASCADE,
+  file_path       TEXT NOT NULL,
+  original_name   TEXT NOT NULL,
+  mime_type       TEXT NOT NULL,
+  size_bytes      INTEGER NOT NULL CHECK (size_bytes > 0),
+  uploaded_by     UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS labour_attachments_entry_idx
+  ON labour_attachments(labour_entry_id);
+
+CREATE TABLE IF NOT EXISTS expense_attachments (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  expense_id    UUID NOT NULL REFERENCES expenses(id) ON DELETE CASCADE,
+  file_path     TEXT NOT NULL,
+  original_name TEXT NOT NULL,
+  mime_type     TEXT NOT NULL,
+  size_bytes    INTEGER NOT NULL CHECK (size_bytes > 0),
+  uploaded_by   UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS expense_attachments_expense_idx
+  ON expense_attachments(expense_id);

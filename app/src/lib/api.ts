@@ -25,3 +25,27 @@ export class ApiError extends Error {
     this.body = body
   }
 }
+
+/**
+ * Best-effort extraction of a server-supplied error message from a thrown
+ * `ApiError`. The API's convention is `{ error: string }` (and occasionally
+ * `{ message: string }`); falls back to the generic message when nothing
+ * usable is present.
+ */
+export function getServerErrorMessage(
+  err: unknown,
+  fallback: string,
+): string {
+  if (!(err instanceof ApiError)) return fallback
+  const body = err.body
+  if (body && typeof body === 'object') {
+    const obj = body as Record<string, unknown>
+    if (typeof obj.error === 'string' && obj.error.trim() !== '') {
+      return obj.error
+    }
+    if (typeof obj.message === 'string' && obj.message.trim() !== '') {
+      return obj.message
+    }
+  }
+  return fallback
+}

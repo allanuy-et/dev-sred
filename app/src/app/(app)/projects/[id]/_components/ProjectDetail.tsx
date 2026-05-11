@@ -17,7 +17,10 @@ import {
   PROJECT_TYPE_LABELS,
 } from '@/lib/project-labels'
 
-import type { SelectOption } from '../../../labour/_lib/selectOptions'
+import type {
+  EmployeeOption,
+  SelectOption,
+} from '../../../labour/_lib/selectOptions'
 import {
   ProjectForm,
   projectToFormInitial,
@@ -25,7 +28,7 @@ import {
 
 export interface ProjectDetailProps {
   project: Project
-  employees: SelectOption[]
+  employees: EmployeeOption[]
   parentProjects: SelectOption[]
   /** Right-side aside content — typically "Recent labour" + "Recent expenses". */
   aside: ReactNode
@@ -44,8 +47,10 @@ export function ProjectDetail({
   const [error, setError] = useState<string | null>(null)
 
   const isActive = project.status === 'active'
-  const managerLabel =
-    employees.find((e) => e.id === project.projectManagerId)?.label ?? '—'
+  const manager = employees.find((e) => e.id === project.projectManagerId)
+  const managerLabel = manager
+    ? `${manager.firstName} ${manager.lastName}`
+    : '—'
   const parentLabel =
     parentProjects.find((p) => p.id === project.parentProjectId)?.label ?? '—'
 
@@ -93,8 +98,11 @@ export function ProjectDetail({
           initial={projectToFormInitial(project)}
           employees={employees}
           parentProjects={parentProjects}
-          onSuccessHref={`/projects/${project.id}`}
-          onCancelHref={`/projects/${project.id}`}
+          onSuccess={() => {
+            setEditing(false)
+            router.refresh()
+          }}
+          onCancel={() => setEditing(false)}
         />
       </Card>
     )

@@ -5,7 +5,7 @@ import { useState, useSyncExternalStore } from 'react'
 
 import { Button } from '@/components/Button'
 import { Field } from '@/components/Field'
-import { ApiError } from '@/lib/api'
+import { ApiError, getServerErrorMessage } from '@/lib/api'
 import { clientApi } from '@/lib/api.client'
 import type { SessionUser } from '@/lib/auth'
 import { getMessages } from '@/lib/i18n'
@@ -62,6 +62,10 @@ export default function LoginPage() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError(t.auth.invalidCredentials)
+      } else if (err instanceof ApiError && err.status === 403) {
+        // Limited-user rejection — surface the server's explicit message so
+        // the user understands they have an account but can't sign in.
+        setError(getServerErrorMessage(err, t.common.genericError))
       } else {
         setError(t.common.genericError)
       }

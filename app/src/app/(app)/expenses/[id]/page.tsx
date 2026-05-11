@@ -9,6 +9,7 @@ import { BackChevron } from '@/components/BackChevron'
 import { Card } from '@/components/Card'
 import { ApiError } from '@/lib/api'
 import { serverApi } from '@/lib/api.server'
+import { getCurrentUser } from '@/lib/auth.server'
 
 import {
   loadEmployees,
@@ -34,16 +35,19 @@ export default async function ExpenseDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const [entry, employees, projects] = await Promise.all([
+  const [entry, employees, projects, currentUser] = await Promise.all([
     loadEntry(id),
     // Pass 'all' so a deactivated employee/project that's still referenced by
     // this entry stays in the edit dropdown — otherwise saving silently drops
     // the assignment.
     loadEmployees('all'),
     loadProjects('all'),
+    getCurrentUser(),
   ])
 
   if (!entry) notFound()
+  const lockedToEmployeeId =
+    currentUser?.accessLevel === 'standard' ? currentUser.id : undefined
 
   return (
     <div className="space-y-12">
@@ -62,6 +66,7 @@ export default async function ExpenseDetailPage({
           entry={entry}
           employees={employees}
           projects={projects}
+          lockedToEmployeeId={lockedToEmployeeId}
         />
       </Card>
     </div>

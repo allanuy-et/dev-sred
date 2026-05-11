@@ -25,6 +25,7 @@ import { LABOUR_TYPE_LABELS } from '@/lib/labour-labels'
 import {
   loadEmployees,
   loadProjects,
+  type EmployeeOption,
   type SelectOption,
 } from '../../labour/_lib/selectOptions'
 import { ProjectDetail } from './_components/ProjectDetail'
@@ -88,6 +89,8 @@ export default async function ProjectDetailPage({
 
   const tz = currentUser.timezone
   const locale = getIntlLocale(currentUser.language)
+  const lockedToEmployeeId =
+    currentUser.accessLevel === 'standard' ? currentUser.id : undefined
 
   // Fetch related records once we know the project is real.
   const [labour, expenses] = await Promise.all([
@@ -107,6 +110,7 @@ export default async function ProjectDetailPage({
         locale={locale}
         employees={employees}
         projects={allProjects}
+        lockedToEmployeeId={lockedToEmployeeId}
       />
       <RecentExpensesCard
         projectId={project.id}
@@ -115,6 +119,7 @@ export default async function ProjectDetailPage({
         locale={locale}
         employees={employees}
         projects={allProjects}
+        lockedToEmployeeId={lockedToEmployeeId}
       />
     </>
   )
@@ -150,13 +155,15 @@ function RecentLabourCard({
   locale,
   employees,
   projects,
+  lockedToEmployeeId,
 }: {
   projectId: string
   entries: LabourEntryWithRelations[]
   tz: string
   locale: string
-  employees: SelectOption[]
+  employees: EmployeeOption[]
   projects: SelectOption[]
+  lockedToEmployeeId?: string
 }) {
   return (
     <Card
@@ -211,6 +218,7 @@ function RecentLabourCard({
           employees={employees}
           projects={projects}
           presetProjectId={projectId}
+          lockedToEmployeeId={lockedToEmployeeId}
         />
       </div>
     </Card>
@@ -224,13 +232,15 @@ function RecentExpensesCard({
   locale,
   employees,
   projects,
+  lockedToEmployeeId,
 }: {
   projectId: string
   entries: ExpenseWithRelations[]
   tz: string
   locale: string
-  employees: SelectOption[]
+  employees: EmployeeOption[]
   projects: SelectOption[]
+  lockedToEmployeeId?: string
 }) {
   return (
     <Card
@@ -285,6 +295,7 @@ function RecentExpensesCard({
           employees={employees}
           projects={projects}
           presetProjectId={projectId}
+          lockedToEmployeeId={lockedToEmployeeId}
         />
       </div>
     </Card>

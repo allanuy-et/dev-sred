@@ -60,9 +60,10 @@ export function Dialog({
       ref={ref}
       onClose={handleNativeClose}
       onClick={handleClick}
-      // `backdrop:` variants style the `::backdrop` pseudo. The dialog itself
-      // is centered by browser default; we just style the surface + max sizes.
-      className={`w-[92vw] ${maxWidthClass} max-h-[85vh] overflow-hidden rounded-xl border border-border bg-surface p-0 shadow-md backdrop:bg-black/40 backdrop:backdrop-blur-sm`}
+      // `backdrop:` variants style the `::backdrop` pseudo. Explicit
+      // `fixed inset-0 m-auto` centers the dialog — Tailwind v4 preflight
+      // resets margin so we can't rely on the UA default for `:modal`.
+      className={`fixed inset-0 m-auto w-[92vw] ${maxWidthClass} max-h-[85vh] overflow-hidden rounded-xl border border-border bg-surface p-0 shadow-md backdrop:bg-black/40 backdrop:backdrop-blur-sm`}
     >
       <div className="flex max-h-[85vh] flex-col">
         <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-6 py-4">

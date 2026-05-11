@@ -9,6 +9,18 @@ export interface SelectOption {
 }
 
 /**
+ * Rich employee option for the `<EmployeePicker>`. Carries the fields the
+ * picker needs to render an avatar + name + email row without round-tripping
+ * to fetch the user record.
+ */
+export interface EmployeeOption {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+}
+
+/**
  * Load options for an employee select.
  *
  * Default `status=active` covers the "create new" case (you wouldn't assign
@@ -19,13 +31,15 @@ export interface SelectOption {
  */
 export async function loadEmployees(
   status: StatusFilterValue = 'active',
-): Promise<SelectOption[]> {
+): Promise<EmployeeOption[]> {
   const { employees } = await serverApi<{ employees: User[] }>(
     `/employees?status=${status}`,
   )
   return employees.map((e) => ({
     id: e.id,
-    label: `${e.firstName} ${e.lastName}`,
+    firstName: e.firstName,
+    lastName: e.lastName,
+    email: e.email,
   }))
 }
 

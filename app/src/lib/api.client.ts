@@ -35,3 +35,27 @@ export async function clientApi<T>(
 
   return parsed as T
 }
+
+/**
+ * Multipart file upload helper. Browser-side. Each file is appended as a
+ * `files` field — matches the server's `upload.array('files', ...)`.
+ */
+export async function uploadFiles<T>(path: string, files: File[]): Promise<T> {
+  const fd = new FormData()
+  files.forEach((f) => fd.append('files', f))
+  const url = `/api${path.startsWith('/') ? path : `/${path}`}`
+  const res = await fetch(url, {
+    method: 'POST',
+    credentials: 'include',
+    body: fd,
+  })
+  const parsed = (await res.json().catch(() => null)) as unknown
+  if (!res.ok) {
+    throw new ApiError(
+      `Upload failed: ${res.status} ${res.statusText}`,
+      res.status,
+      parsed,
+    )
+  }
+  return parsed as T
+}

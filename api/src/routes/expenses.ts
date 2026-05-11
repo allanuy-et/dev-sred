@@ -1,5 +1,10 @@
+import { createReadStream } from 'node:fs'
+import { stat } from 'node:fs/promises'
+import type { NextFunction, Request, RequestHandler, Response } from 'express'
 import { Router } from 'express'
+import multer from 'multer'
 import type {
+  Attachment,
   CreateExpenseInput,
   Expense,
   ExpenseEvidence,
@@ -8,6 +13,16 @@ import type {
   UpdateExpenseInput,
 } from '@sred/shared'
 import { query } from '../db.js'
+import {
+  ALLOWED_MIME,
+  MAX_FILES_PER_REQUEST,
+  MAX_FILE_BYTES,
+  MAX_TOTAL_ATTACHMENTS_PER_PARENT,
+  looksLike,
+  resolveAbsolute,
+  saveBuffer,
+  unlinkRelative,
+} from '../lib/attachments.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 
 const router = Router()
@@ -101,11 +116,15 @@ function toExpense(row: ExpenseRow): Expense {
   }
 }
 
-function toExpenseWithRelations(row: ExpenseRowWithRelations): ExpenseWithRelations {
+function toExpenseWithRelations(
+  row: ExpenseRowWithRelations,
+  attachments: Attachment[] = [],
+): ExpenseWithRelations {
   return {
     ...toExpense(row),
     employeeName: `${row.employee_first_name} ${row.employee_last_name}`.trim(),
     projectName: row.project_name,
+    attachments,
   }
 }
 
@@ -215,7 +234,7 @@ router.get('/', async (req, res, next) => {
     )
 
     return res.json({
-      entries: rows.rows.map(toExpenseWithRelations),
+      entries: rows.rows.map((r) => toExpenseWithRelations(r)),
       total,
     })
   } catch (err) {
@@ -239,7 +258,262 @@ router.get('/:id', async (req, res, next) => {
     )
     const row = result.rows[0]
     if (!row) return res.status(404).json({ error: 'Not found' })
-    return res.json({ entry: toExpenseWithRelations(row) })
+    const attachments = await listExpenseAttachments(req.params.id)
+    return res.json({ entry: toExpenseWithRelations(row, attachments) })
+  } catch (err) {
+    return next(err)
+  }
+})
+
+// --- Attachments ----------------------------------------------------------
+
+interface ExpenseAttachmentRow {
+  id: string
+  file_path: string
+  original_name: string
+  mime_type: string
+  size_bytes: number
+  uploaded_by: string | null
+  created_at: Date | string
+}
+
+function toAttachment(row: ExpenseAttachmentRow): Attachment {
+  return {
+    id: row.id,
+    filePath: row.file_path,
+    originalName: row.original_name,
+    mimeType: row.mime_type,
+    sizeBytes: Number(row.size_bytes),
+    uploadedBy: row.uploaded_by,
+    createdAt:
+      typeof row.created_at === 'string'
+        ? new Date(row.created_at).toISOString()
+        : row.created_at.toISOString(),
+  }
+}
+
+async function listExpenseAttachments(expenseId: string): Promise<Attachment[]> {
+  const res = await query<ExpenseAttachmentRow>(
+    `SELECT id, file_path, original_name, mime_type, size_bytes, uploaded_by, created_at
+     FROM expense_attachments
+     WHERE expense_id = $1
+     ORDER BY created_at ASC`,
+    [expenseId]
+  )
+  return res.rows.map(toAttachment)
+}
+
+async function loadExpenseForAuth(
+  expenseId: string,
+  callerId: string,
+): Promise<{ employeeId: string; companyId: string; callerAccess: string } | null> {
+  const r = await query<{
+    employee_id: string
+    company_id: string
+    access_level: string
+  }>(
+    `SELECT e.employee_id, me.company_id, me.access_level
+     FROM expenses e
+     JOIN projects p ON p.id = e.project_id
+     JOIN users me ON me.id = $2
+     WHERE e.id = $1 AND p.company_id = me.company_id`,
+    [expenseId, callerId]
+  )
+  const row = r.rows[0]
+  if (!row) return null
+  return {
+    employeeId: row.employee_id,
+    companyId: row.company_id,
+    callerAccess: row.access_level,
+  }
+}
+
+const expenseUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_FILE_BYTES, files: MAX_FILES_PER_REQUEST },
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_MIME.has(file.mimetype)) cb(null, true)
+    else cb(new Error('UNSUPPORTED_TYPE'))
+  },
+})
+
+function expenseMulterErrorHandler(
+  err: unknown,
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File too large (max 5 MB).' })
+    }
+    if (err.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({ error: `Too many files (max ${MAX_FILES_PER_REQUEST}).` })
+    }
+    return res.status(400).json({ error: err.message })
+  }
+  if (err instanceof Error && err.message === 'UNSUPPORTED_TYPE') {
+    return res
+      .status(400)
+      .json({ error: 'Unsupported file type. Only PDF, JPG, and PNG are allowed.' })
+  }
+  return next(err)
+}
+
+const expenseUploadMiddleware = expenseUpload.array(
+  'files',
+  MAX_FILES_PER_REQUEST,
+) as unknown as RequestHandler
+
+router.get('/:id/attachments', async (req, res, next) => {
+  try {
+    if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Not found' })
+    const auth = await loadExpenseForAuth(req.params.id, req.user!.userId)
+    if (!auth) return res.status(404).json({ error: 'Not found' })
+    const attachments = await listExpenseAttachments(req.params.id)
+    return res.json({ attachments })
+  } catch (err) {
+    return next(err)
+  }
+})
+
+router.post(
+  '/:id/attachments',
+  (req, res, next) =>
+    expenseUploadMiddleware(req, res, (err) =>
+      err ? expenseMulterErrorHandler(err, req, res, next) : next(),
+    ),
+  async (req, res, next) => {
+    try {
+      if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Not found' })
+      const files = (req.files as Express.Multer.File[] | undefined) ?? []
+      if (files.length === 0) return res.status(400).json({ error: 'No files in upload.' })
+      const auth = await loadExpenseForAuth(req.params.id, req.user!.userId)
+      if (!auth) return res.status(404).json({ error: 'Not found' })
+      if (
+        auth.callerAccess === 'standard' &&
+        auth.employeeId !== req.user!.userId
+      ) {
+        return res
+          .status(403)
+          .json({ error: 'You can only attach files to your own expenses.' })
+      }
+      const existingCount = await query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count FROM expense_attachments WHERE expense_id = $1`,
+        [req.params.id]
+      )
+      const existing = Number(existingCount.rows[0]?.count ?? 0)
+      if (existing + files.length > MAX_TOTAL_ATTACHMENTS_PER_PARENT) {
+        return res.status(400).json({
+          error: `Too many attachments (max ${MAX_TOTAL_ATTACHMENTS_PER_PARENT} per expense).`,
+        })
+      }
+      for (const f of files) {
+        if (!looksLike(f.buffer, f.mimetype)) {
+          return res
+            .status(400)
+            .json({ error: `\`${f.originalname}\` does not match its declared file type.` })
+        }
+      }
+      const saved: { relativePath: string; sizeBytes: number; file: Express.Multer.File }[] = []
+      try {
+        for (const f of files) {
+          const s = await saveBuffer(auth.companyId, f.mimetype, f.buffer)
+          saved.push({ ...s, file: f })
+        }
+      } catch (err) {
+        await Promise.allSettled(saved.map((s) => unlinkRelative(s.relativePath)))
+        throw err
+      }
+      const inserted: Attachment[] = []
+      for (const s of saved) {
+        const r = await query<ExpenseAttachmentRow>(
+          `INSERT INTO expense_attachments
+            (expense_id, file_path, original_name, mime_type, size_bytes, uploaded_by)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id, file_path, original_name, mime_type, size_bytes, uploaded_by, created_at`,
+          [
+            req.params.id,
+            s.relativePath,
+            s.file.originalname,
+            s.file.mimetype,
+            s.sizeBytes,
+            req.user!.userId,
+          ]
+        )
+        inserted.push(toAttachment(r.rows[0]))
+      }
+      return res.status(201).json({ attachments: inserted })
+    } catch (err) {
+      return next(err)
+    }
+  },
+)
+
+router.delete('/:id/attachments/:attachmentId', async (req, res, next) => {
+  try {
+    if (!isUuid(req.params.id) || !isUuid(req.params.attachmentId)) {
+      return res.status(404).json({ error: 'Not found' })
+    }
+    const auth = await loadExpenseForAuth(req.params.id, req.user!.userId)
+    if (!auth) return res.status(404).json({ error: 'Not found' })
+    if (
+      auth.callerAccess === 'standard' &&
+      auth.employeeId !== req.user!.userId
+    ) {
+      return res
+        .status(403)
+        .json({ error: 'You can only delete attachments on your own expenses.' })
+    }
+    const r = await query<{ file_path: string }>(
+      `DELETE FROM expense_attachments
+       WHERE id = $1 AND expense_id = $2
+       RETURNING file_path`,
+      [req.params.attachmentId, req.params.id]
+    )
+    const row = r.rows[0]
+    if (!row) return res.status(404).json({ error: 'Not found' })
+    await unlinkRelative(row.file_path)
+    return res.json({ ok: true })
+  } catch (err) {
+    return next(err)
+  }
+})
+
+router.get('/attachments/:id/download', async (req, res, next) => {
+  try {
+    if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Not found' })
+    const r = await query<{
+      file_path: string
+      original_name: string
+      mime_type: string
+      size_bytes: number
+    }>(
+      `SELECT ea.file_path, ea.original_name, ea.mime_type, ea.size_bytes
+       FROM expense_attachments ea
+       JOIN expenses e ON e.id = ea.expense_id
+       JOIN projects p ON p.id = e.project_id
+       JOIN users me ON me.id = $2
+       WHERE ea.id = $1 AND p.company_id = me.company_id`,
+      [req.params.id, req.user!.userId]
+    )
+    const row = r.rows[0]
+    if (!row) return res.status(404).json({ error: 'Not found' })
+    const absolute = resolveAbsolute(row.file_path)
+    try {
+      await stat(absolute)
+    } catch {
+      return res.status(404).json({ error: 'File missing on disk.' })
+    }
+    const disposition = req.query.inline === '1' ? 'inline' : 'attachment'
+    const encoded = encodeURIComponent(row.original_name)
+    res.setHeader('Content-Type', row.mime_type)
+    res.setHeader('Content-Length', String(row.size_bytes))
+    res.setHeader(
+      'Content-Disposition',
+      `${disposition}; filename="${row.original_name.replace(/"/g, '')}"; filename*=UTF-8''${encoded}`,
+    )
+    createReadStream(absolute).pipe(res)
   } catch (err) {
     return next(err)
   }
@@ -318,6 +592,16 @@ router.post('/', async (req, res, next) => {
     const parsed = parseCreateExpense(req.body)
     if (!parsed.ok) return res.status(400).json({ error: parsed.error })
     const v = parsed.value
+
+    // Standard users can only record expenses they themselves submitted.
+    if (
+      req.user!.accessLevel === 'standard' &&
+      v.employeeId !== req.user!.userId
+    ) {
+      return res
+        .status(403)
+        .json({ error: 'You can only record expenses for yourself.' })
+    }
 
     const me = await query<{ company_id: string }>(
       `SELECT company_id FROM users WHERE id = $1`,
@@ -436,6 +720,21 @@ router.patch('/:id', async (req, res, next) => {
     const currentRow = current.rows[0]
     if (!currentRow) return res.status(404).json({ error: 'Not found' })
 
+    // Standard users can only edit their own expenses, and can't reassign to
+    // a different employee.
+    if (req.user!.accessLevel === 'standard') {
+      if (currentRow.employee_id !== req.user!.userId) {
+        return res
+          .status(403)
+          .json({ error: 'You can only edit your own expenses.' })
+      }
+      if ('employeeId' in b && b.employeeId !== req.user!.userId) {
+        return res
+          .status(403)
+          .json({ error: 'You can only record expenses for yourself.' })
+      }
+    }
+
     // If FK columns changed, verify the new references exist inside caller's company.
     if ('employeeId' in b || 'projectId' in b) {
       const fkErr = await verifyForeignKeysInCompany(
@@ -467,14 +766,17 @@ router.delete('/:id', async (req, res, next) => {
   try {
     if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Not found' })
 
-    // Company-scoped delete: only delete if expense's project belongs to caller's company.
+    // Company-scoped delete: only delete if expense's project belongs to
+    // caller's company. Standard users are further restricted to their own
+    // entries — a no-op for admins.
     const result = await query(
       `DELETE FROM expenses e
        USING projects p, users me
        WHERE e.id = $1
          AND p.id = e.project_id
          AND me.id = $2
-         AND p.company_id = me.company_id`,
+         AND p.company_id = me.company_id
+         AND (me.access_level = 'admin' OR e.employee_id = me.id)`,
       [req.params.id, req.user!.userId]
     )
     if (result.rowCount === 0) return res.status(404).json({ error: 'Not found' })

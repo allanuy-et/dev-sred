@@ -4,22 +4,28 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 import type {
+  Attachment,
+  AttachmentListResponse,
   CreateExpenseInput,
   Expense,
   ExpenseEvidence,
   ExpenseType,
 } from '@sred/shared'
 
+import { AttachmentsField } from '@/components/AttachmentsField'
 import { Button } from '@/components/Button'
+import { EmployeePicker } from '@/components/EmployeePicker'
 import { Field, SelectField, TextAreaField } from '@/components/Field'
-import { ApiError } from '@/lib/api'
-import { clientApi } from '@/lib/api.client'
+import { ApiError, getServerErrorMessage } from '@/lib/api'
+import { clientApi, uploadFiles } from '@/lib/api.client'
 import {
   EXPENSE_EVIDENCES,
   EXPENSE_EVIDENCE_LABELS,
   EXPENSE_TYPES,
   EXPENSE_TYPE_LABELS,
 } from '@/lib/expense-labels'
+
+import type { EmployeeOption } from '../../labour/_lib/selectOptions'
 
 interface SelectOption {
   id: string
@@ -40,7 +46,7 @@ export interface ExpenseFormInitial {
 export interface ExpenseFormProps {
   mode: 'create' | 'edit'
   initial: ExpenseFormInitial
-  employees: SelectOption[]
+  employees: EmployeeOption[]
   projects: SelectOption[]
   /** Required for `edit` mode. */
   entryId?: string
@@ -62,6 +68,13 @@ export interface ExpenseFormProps {
    * does NOT navigate; the caller decides what "cancel" means.
    */
   onCancel?: () => void
+  /**
+   * When set, the employee picker is locked to this id — used for standard
+   * users who can only record expenses for themselves.
+   */
+  lockedToEmployeeId?: string
+  /** Existing attachments — passed in edit mode for the file manager UI. */
+  attachments?: Attachment[]
 }
 
 // POST/PATCH body matches the shared `CreateExpenseInput` shape; PATCH on the
@@ -77,11 +90,15 @@ export function ExpenseForm({
   onCancelHref,
   onSuccess,
   onCancel,
+  lockedToEmployeeId,
+  attachments = [],
 }: ExpenseFormProps) {
   const router = useRouter()
   const [state, setState] = useState<ExpenseFormInitial>(initial)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
+  const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([])
 
   function update<K extends keyof ExpenseFormInitial>(
     key: K,
@@ -94,8 +111,13 @@ export function ExpenseForm({
     e.preventDefault()
     setError(null)
 
+    if (!state.date) {
+      setError('Please choose a date.')
+      return
+    }
     const costNumber =
       typeof state.cost === 'number' ? state.cost : Number(state.cost)
+    // Mirrors the API: `cost` must be a number >= 0.
     if (!Number.isFinite(costNumber) || costNumber < 0) {
       setError('Cost must be a non-negative number.')
       return
@@ -114,7 +136,7 @@ export function ExpenseForm({
 
     const body: CreateExpenseInput = {
       date: state.date,
-      employeeId: state.employeeId,
+      employeeId: lockedToEmployeeId ?? state.employeeId,
       projectId: state.projectId,
       cost: costNumber,
       poNumber: trimmedPo === '' ? null : trimmedPo,
@@ -125,31 +147,56 @@ export function ExpenseForm({
 
     setSubmitting(true)
     try {
+      let recordId: string
       if (mode === 'create') {
-        await clientApi<{ entry: Expense }>('/expenses', {
+        const created = await clientApi<{ entry: Expense }>('/expenses', {
           method: 'POST',
           body,
         })
+        recordId = created.entry.id
       } else {
         if (!entryId) throw new Error('Missing entry id for edit')
         await clientApi<{ entry: Expense }>(`/expenses/${entryId}`, {
           method: 'PATCH',
           body,
         })
+        recordId = entryId
       }
+
+      // Reconcile attachments: delete first, then upload new files.
+      const dels = removedAttachmentIds.map((aid) =>
+        clientApi<{ ok: boolean }>(
+          `/expenses/${recordId}/attachments/${aid}`,
+          { method: 'DELETE' },
+        ),
+      )
+      await Promise.all(dels)
+      if (pendingFiles.length > 0) {
+        await uploadFiles<AttachmentListResponse>(
+          `/expenses/${recordId}/attachments`,
+          pendingFiles,
+        )
+      }
+      setPendingFiles([])
+      setRemovedAttachmentIds([])
+
       if (onSuccess) {
         onSuccess()
       } else {
         router.push(onSuccessHref)
         router.refresh()
       }
+      setSubmitting(false)
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError('Your session expired. Please sign in again.')
-      } else if (err instanceof ApiError && err.status === 400) {
-        setError('Please double-check the entry — something looked off.')
       } else {
-        setError('Could not save the expense. Please try again.')
+        setError(
+          getServerErrorMessage(
+            err,
+            'Could not save the expense. Please try again.',
+          ),
+        )
       }
       setSubmitting(false)
     }
@@ -179,21 +226,19 @@ export function ExpenseForm({
           }}
         />
 
-        <SelectField
+        <EmployeePicker
           label="Employee"
           required
-          value={state.employeeId}
-          onChange={(e) => update('employeeId', e.currentTarget.value)}
-        >
-          <option value="" disabled>
-            Select an employee…
-          </option>
-          {employees.map((emp) => (
-            <option key={emp.id} value={emp.id}>
-              {emp.label}
-            </option>
-          ))}
-        </SelectField>
+          value={lockedToEmployeeId ?? state.employeeId}
+          onChange={(id) => update('employeeId', id)}
+          options={employees}
+          locked={Boolean(lockedToEmployeeId)}
+          helper={
+            lockedToEmployeeId
+              ? 'Standard users can only record expenses for themselves.'
+              : undefined
+          }
+        />
 
         <SelectField
           label="Project"
@@ -254,6 +299,26 @@ export function ExpenseForm({
         value={state.notes}
         onChange={(e) => update('notes', e.currentTarget.value)}
         rows={3}
+      />
+
+      <AttachmentsField
+        parentKind="expense"
+        parentId={entryId}
+        existing={attachments}
+        pendingFiles={pendingFiles}
+        removedIds={removedAttachmentIds}
+        onAddFiles={(files) => setPendingFiles((prev) => [...prev, ...files])}
+        onRemoveExisting={(id) =>
+          setRemovedAttachmentIds((prev) =>
+            prev.includes(id) ? prev : [...prev, id],
+          )
+        }
+        onUndoRemoveExisting={(id) =>
+          setRemovedAttachmentIds((prev) => prev.filter((x) => x !== id))
+        }
+        onRemovePending={(idx) =>
+          setPendingFiles((prev) => prev.filter((_, i) => i !== idx))
+        }
       />
 
       {error ? (

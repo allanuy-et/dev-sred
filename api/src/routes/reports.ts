@@ -49,21 +49,51 @@ interface MonthlyAggRow {
   project_type: ProjectType
   hours: string | null
   cost: string | null
+  labour_cost: string | null
   sred_hours: string | null
   sred_cost: string | null
+  sred_labour_cost: string | null
 }
 
 interface YearlyAggRow {
   month: string // EXTRACT returns NUMERIC -> string
   hours: string | null
   cost: string | null
+  labour_cost: string | null
   sred_hours: string | null
   sred_cost: string | null
+  sred_labour_cost: string | null
 }
 
 function n(v: string | null | undefined): number {
   return v == null ? 0 : Number(v)
 }
+
+// Shared SQL fragment: each labour row gets the rate that was in effect on
+// its date via a LATERAL join into wage_history (newest row with
+// effective_date <= l.date). The rate picked from the three columns depends
+// on the entry's `labour_time`.
+const LABOUR_PRICED_SQL = `
+  SELECT
+    l.project_id,
+    l.date,
+    l.hours::numeric AS hours,
+    (l.hours::numeric * COALESCE(
+       CASE l.labour_time
+         WHEN 'overtime' THEN wh.overtime_rate
+         WHEN 'double'   THEN wh.holiday_rate
+         ELSE                 wh.regular_rate
+       END, 0))::numeric AS labour_cost
+  FROM labour_entries l
+  LEFT JOIN LATERAL (
+    SELECT regular_rate, overtime_rate, holiday_rate
+    FROM wage_history wh
+    WHERE wh.employee_id = l.employee_id
+      AND wh.effective_date <= l.date
+    ORDER BY wh.effective_date DESC
+    LIMIT 1
+  ) wh ON TRUE
+`
 
 router.get('/monthly', async (req, res, next) => {
   try {
@@ -103,12 +133,22 @@ router.get('/monthly', async (req, res, next) => {
          SELECT make_date($2::int, $3::int, 1) AS month_start,
                 (make_date($2::int, $3::int, 1) + interval '1 month' - interval '1 day')::date AS month_end
        ),
-       activity AS (
-         SELECT l.project_id, l.hours::numeric AS hours, 0::numeric AS cost
-         FROM labour_entries l, bounds b
+       labour_priced AS (
+         ${LABOUR_PRICED_SQL}
+         , bounds b
          WHERE l.date BETWEEN b.month_start AND b.month_end
+       ),
+       activity AS (
+         SELECT lp.project_id,
+                lp.hours,
+                0::numeric AS cost,
+                lp.labour_cost
+         FROM labour_priced lp
          UNION ALL
-         SELECT e.project_id, 0::numeric AS hours, e.cost::numeric AS cost
+         SELECT e.project_id,
+                0::numeric AS hours,
+                e.cost::numeric AS cost,
+                0::numeric AS labour_cost
          FROM expenses e, bounds b
          WHERE e.date BETWEEN b.month_start AND b.month_end
        )
@@ -116,10 +156,12 @@ router.get('/monthly', async (req, res, next) => {
          p.id           AS project_id,
          p.name         AS project_name,
          p.type         AS project_type,
-         COALESCE(SUM(a.hours), 0)::text                                    AS hours,
-         COALESCE(SUM(a.cost), 0)::text                                     AS cost,
-         COALESCE(SUM(a.hours) FILTER (WHERE p.type = 'sred'), 0)::text     AS sred_hours,
-         COALESCE(SUM(a.cost)  FILTER (WHERE p.type = 'sred'), 0)::text     AS sred_cost
+         COALESCE(SUM(a.hours), 0)::text                                          AS hours,
+         COALESCE(SUM(a.cost), 0)::text                                           AS cost,
+         COALESCE(SUM(a.labour_cost), 0)::text                                    AS labour_cost,
+         COALESCE(SUM(a.hours)       FILTER (WHERE p.type = 'sred'), 0)::text     AS sred_hours,
+         COALESCE(SUM(a.cost)        FILTER (WHERE p.type = 'sred'), 0)::text     AS sred_cost,
+         COALESCE(SUM(a.labour_cost) FILTER (WHERE p.type = 'sred'), 0)::text     AS sred_labour_cost
        FROM activity a
        JOIN projects p ON p.id = a.project_id
        JOIN users me   ON me.id = $1
@@ -129,24 +171,49 @@ router.get('/monthly', async (req, res, next) => {
       params
     )
 
-    const rows: ReportProjectRow[] = result.rows.map((r) => ({
-      projectId: r.project_id,
-      projectName: r.project_name,
-      projectType: r.project_type,
-      hours: n(r.hours),
-      cost: n(r.cost),
-      sredHours: n(r.sred_hours),
-      sredCost: n(r.sred_cost),
-    }))
+    const rows: ReportProjectRow[] = result.rows.map((r) => {
+      const hours = n(r.hours)
+      const cost = n(r.cost)
+      const labourCost = n(r.labour_cost)
+      const sredHours = n(r.sred_hours)
+      const sredCost = n(r.sred_cost)
+      const sredLabourCost = n(r.sred_labour_cost)
+      return {
+        projectId: r.project_id,
+        projectName: r.project_name,
+        projectType: r.project_type,
+        hours,
+        cost,
+        labourCost,
+        totalCost: cost + labourCost,
+        sredHours,
+        sredCost,
+        sredLabourCost,
+        sredTotalCost: sredCost + sredLabourCost,
+      }
+    })
 
     const totals: ReportTotals = rows.reduce<ReportTotals>(
       (acc, r) => ({
         hours: acc.hours + r.hours,
         cost: acc.cost + r.cost,
+        labourCost: acc.labourCost + r.labourCost,
+        totalCost: acc.totalCost + r.totalCost,
         sredHours: acc.sredHours + r.sredHours,
         sredCost: acc.sredCost + r.sredCost,
+        sredLabourCost: acc.sredLabourCost + r.sredLabourCost,
+        sredTotalCost: acc.sredTotalCost + r.sredTotalCost,
       }),
-      { hours: 0, cost: 0, sredHours: 0, sredCost: 0 }
+      {
+        hours: 0,
+        cost: 0,
+        labourCost: 0,
+        totalCost: 0,
+        sredHours: 0,
+        sredCost: 0,
+        sredLabourCost: 0,
+        sredTotalCost: 0,
+      }
     )
 
     const body: MonthlyReportResponse = { rows, totals }
@@ -192,12 +259,24 @@ router.get('/yearly', async (req, res, next) => {
          SELECT make_date($2::int, 1, 1)                                   AS year_start,
                 (make_date($2::int, 1, 1) + interval '1 year' - interval '1 day')::date AS year_end
        ),
-       activity AS (
-         SELECT l.project_id, l.date, l.hours::numeric AS hours, 0::numeric AS cost
-         FROM labour_entries l, bounds b
+       labour_priced AS (
+         ${LABOUR_PRICED_SQL}
+         , bounds b
          WHERE l.date BETWEEN b.year_start AND b.year_end
+       ),
+       activity AS (
+         SELECT lp.project_id,
+                lp.date,
+                lp.hours,
+                0::numeric AS cost,
+                lp.labour_cost
+         FROM labour_priced lp
          UNION ALL
-         SELECT e.project_id, e.date, 0::numeric AS hours, e.cost::numeric AS cost
+         SELECT e.project_id,
+                e.date,
+                0::numeric AS hours,
+                e.cost::numeric AS cost,
+                0::numeric AS labour_cost
          FROM expenses e, bounds b
          WHERE e.date BETWEEN b.year_start AND b.year_end
        ),
@@ -205,6 +284,7 @@ router.get('/yearly', async (req, res, next) => {
          SELECT EXTRACT(MONTH FROM a.date)::int AS month,
                 a.hours,
                 a.cost,
+                a.labour_cost,
                 p.type AS project_type
          FROM activity a
          JOIN projects p ON p.id = a.project_id
@@ -212,10 +292,12 @@ router.get('/yearly', async (req, res, next) => {
          WHERE p.company_id = me.company_id${typeClause}${projectClause}
        )
        SELECT m::text AS month,
-              COALESCE(SUM(f.hours), 0)::text                                          AS hours,
-              COALESCE(SUM(f.cost), 0)::text                                           AS cost,
-              COALESCE(SUM(f.hours) FILTER (WHERE f.project_type = 'sred'), 0)::text   AS sred_hours,
-              COALESCE(SUM(f.cost)  FILTER (WHERE f.project_type = 'sred'), 0)::text   AS sred_cost
+              COALESCE(SUM(f.hours), 0)::text                                                AS hours,
+              COALESCE(SUM(f.cost), 0)::text                                                 AS cost,
+              COALESCE(SUM(f.labour_cost), 0)::text                                          AS labour_cost,
+              COALESCE(SUM(f.hours)       FILTER (WHERE f.project_type = 'sred'), 0)::text   AS sred_hours,
+              COALESCE(SUM(f.cost)        FILTER (WHERE f.project_type = 'sred'), 0)::text   AS sred_cost,
+              COALESCE(SUM(f.labour_cost) FILTER (WHERE f.project_type = 'sred'), 0)::text   AS sred_labour_cost
        FROM generate_series(1, 12) AS m
        LEFT JOIN filtered f ON f.month = m
        GROUP BY m
@@ -223,22 +305,47 @@ router.get('/yearly', async (req, res, next) => {
       params
     )
 
-    const rows: ReportMonthRow[] = result.rows.map((r) => ({
-      month: Number(r.month),
-      hours: n(r.hours),
-      cost: n(r.cost),
-      sredHours: n(r.sred_hours),
-      sredCost: n(r.sred_cost),
-    }))
+    const rows: ReportMonthRow[] = result.rows.map((r) => {
+      const hours = n(r.hours)
+      const cost = n(r.cost)
+      const labourCost = n(r.labour_cost)
+      const sredHours = n(r.sred_hours)
+      const sredCost = n(r.sred_cost)
+      const sredLabourCost = n(r.sred_labour_cost)
+      return {
+        month: Number(r.month),
+        hours,
+        cost,
+        labourCost,
+        totalCost: cost + labourCost,
+        sredHours,
+        sredCost,
+        sredLabourCost,
+        sredTotalCost: sredCost + sredLabourCost,
+      }
+    })
 
     const totals: ReportTotals = rows.reduce<ReportTotals>(
       (acc, r) => ({
         hours: acc.hours + r.hours,
         cost: acc.cost + r.cost,
+        labourCost: acc.labourCost + r.labourCost,
+        totalCost: acc.totalCost + r.totalCost,
         sredHours: acc.sredHours + r.sredHours,
         sredCost: acc.sredCost + r.sredCost,
+        sredLabourCost: acc.sredLabourCost + r.sredLabourCost,
+        sredTotalCost: acc.sredTotalCost + r.sredTotalCost,
       }),
-      { hours: 0, cost: 0, sredHours: 0, sredCost: 0 }
+      {
+        hours: 0,
+        cost: 0,
+        labourCost: 0,
+        totalCost: 0,
+        sredHours: 0,
+        sredCost: 0,
+        sredLabourCost: 0,
+        sredTotalCost: 0,
+      }
     )
 
     const body: YearlyReportResponse = { rows, totals }

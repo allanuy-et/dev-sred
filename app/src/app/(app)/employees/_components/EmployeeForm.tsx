@@ -14,7 +14,7 @@ import type {
 
 import { Button } from '@/components/Button'
 import { Field, SelectField, TextAreaField } from '@/components/Field'
-import { ApiError } from '@/lib/api'
+import { ApiError, getServerErrorMessage } from '@/lib/api'
 import { clientApi } from '@/lib/api.client'
 import {
   ACCESS_LEVELS,
@@ -99,8 +99,15 @@ export function EmployeeForm({
     e.preventDefault()
     setError(null)
 
-    if (!state.email.trim()) {
+    const email = state.email.trim()
+    if (!email) {
       setError('Please enter an email address.')
+      return
+    }
+    // Cheap email shape check — the server enforces a stricter pattern, but
+    // catching obvious typos client-side avoids a round-trip.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Please enter a valid email address.')
       return
     }
     if (mode === 'create' && state.password.length < 8) {
@@ -110,6 +117,24 @@ export function EmployeeForm({
     if (!state.firstName.trim() || !state.lastName.trim()) {
       setError('Please enter both a first and last name.')
       return
+    }
+    // Mirrors the API: hoursPerYear must be a non-negative integer; rates
+    // must be non-negative numbers when provided.
+    const hpy = toOptionalNumber(state.hoursPerYear)
+    if (hpy !== undefined && (!Number.isInteger(hpy) || hpy < 0)) {
+      setError('Hours per year must be a non-negative whole number.')
+      return
+    }
+    const rateChecks: Array<[string, number | undefined]> = [
+      ['Regular rate', toOptionalNumber(state.regularRate)],
+      ['Overtime rate', toOptionalNumber(state.overtimeRate)],
+      ['Holiday rate', toOptionalNumber(state.holidayRate)],
+    ]
+    for (const [label, n] of rateChecks) {
+      if (n !== undefined && (!Number.isFinite(n) || n < 0)) {
+        setError(`${label} must be a non-negative number.`)
+        return
+      }
     }
 
     setSubmitting(true)
@@ -163,15 +188,23 @@ export function EmployeeForm({
         router.push(onSuccessHref)
         router.refresh()
       }
+      // Reset submitting on success too. When the success target is the same
+      // URL we're already on (e.g. /employees/:id/edit → /employees/:id and
+      // the caller toggles editing locally), Next.js doesn't unmount us, so
+      // a lingering `submitting=true` would freeze the Save button.
+      setSubmitting(false)
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError('Your session expired. Please sign in again.')
       } else if (err instanceof ApiError && err.status === 409) {
         setError('An employee with this email already exists.')
-      } else if (err instanceof ApiError && err.status === 400) {
-        setError('Please double-check the entry — something looked off.')
       } else {
-        setError('Could not save the employee. Please try again.')
+        setError(
+          getServerErrorMessage(
+            err,
+            'Could not save the employee. Please try again.',
+          ),
+        )
       }
       setSubmitting(false)
     }
@@ -252,6 +285,11 @@ export function EmployeeForm({
             const v = e.currentTarget.value
             update('regularRate', v === '' ? '' : Number(v))
           }}
+          helper={
+            mode === 'edit'
+              ? 'For an effective-dated change, use "Add wage change" on the employee profile.'
+              : undefined
+          }
         />
         <Field
           label="Overtime rate ($/hr)"

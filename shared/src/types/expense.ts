@@ -21,9 +21,12 @@ export interface Expense {
   updatedAt: string
 }
 
+import type { Attachment } from './labour.js'
+
 export interface ExpenseWithRelations extends Expense {
   employeeName: string
   projectName: string
+  attachments: Attachment[]
 }
 
 // Inputs accepted by POST /expenses and PATCH /expenses/:id.

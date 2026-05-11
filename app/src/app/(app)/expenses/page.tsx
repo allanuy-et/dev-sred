@@ -105,6 +105,8 @@ export default async function ExpensesListPage({
   if (!currentUser) return null
   const tz = currentUser.timezone
   const locale = getIntlLocale(currentUser.language)
+  const lockedToEmployeeId =
+    currentUser.accessLevel === 'standard' ? currentUser.id : undefined
 
   const sortedEntries = sortBy
     ? [...entries].sort(
@@ -137,6 +139,7 @@ export default async function ExpensesListPage({
               triggerLabel="+ Add Expense"
               employees={employeeOptions}
               projects={projectOptions}
+              lockedToEmployeeId={lockedToEmployeeId}
             />
           </div>
         </>

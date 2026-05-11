@@ -32,9 +32,18 @@ export interface EmployeeDetailProps {
    * width.
    */
   aside: ReactNode
+  /**
+   * Whether the current viewer can edit / deactivate / reactivate this
+   * employee. Only admins can; the backend enforces the same rule.
+   */
+  canManage: boolean
 }
 
-export function EmployeeDetail({ employee, aside }: EmployeeDetailProps) {
+export function EmployeeDetail({
+  employee,
+  aside,
+  canManage,
+}: EmployeeDetailProps) {
   const router = useRouter()
   const { formatDate } = useFormatters()
   const [editing, setEditing] = useState(false)
@@ -79,21 +88,27 @@ export function EmployeeDetail({ employee, aside }: EmployeeDetailProps) {
   if (editing) {
     // Edit mode renders full-width — no aside. The form needs the breathing
     // room and the related-content panels aren't relevant while editing.
+    // We toggle `editing` locally via callbacks instead of navigating, since
+    // the success target would be the same URL anyway and a router.push
+    // there is a no-op that doesn't dismount this component.
     return (
       <Card>
         <EmployeeForm
           mode="edit"
           employeeId={employee.id}
           initial={userToFormInitial(employee)}
-          onSuccessHref={`/employees/${employee.id}`}
-          onCancelHref={`/employees/${employee.id}`}
+          onSuccess={() => {
+            setEditing(false)
+            router.refresh()
+          }}
+          onCancel={() => setEditing(false)}
         />
       </Card>
     )
   }
 
   return (
-    <DetailLayout aside={aside}>
+    <DetailLayout aside={aside} asidePosition="right">
       <Card>
         <dl className="grid gap-x-6 gap-y-6 sm:grid-cols-2">
           <DescriptionItem
@@ -171,22 +186,24 @@ export function EmployeeDetail({ employee, aside }: EmployeeDetailProps) {
           </p>
         ) : null}
 
-        <div className="mt-8 flex items-center justify-end gap-2">
-          <Button
-            variant={isActive ? 'destructive' : 'secondary'}
-            onClick={handleToggleStatus}
-            disabled={pending}
-          >
-            {pending
-              ? isActive
-                ? 'Deactivating…'
-                : 'Reactivating…'
-              : isActive
-                ? 'Deactivate'
-                : 'Reactivate'}
-          </Button>
-          <Button onClick={() => setEditing(true)}>Edit</Button>
-        </div>
+        {canManage ? (
+          <div className="mt-8 flex items-center justify-end gap-2">
+            <Button
+              variant={isActive ? 'destructive' : 'secondary'}
+              onClick={handleToggleStatus}
+              disabled={pending}
+            >
+              {pending
+                ? isActive
+                  ? 'Deactivating…'
+                  : 'Reactivating…'
+                : isActive
+                  ? 'Deactivate'
+                  : 'Reactivate'}
+            </Button>
+            <Button onClick={() => setEditing(true)}>Edit</Button>
+          </div>
+        ) : null}
       </Card>
     </DetailLayout>
   )

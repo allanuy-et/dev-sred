@@ -17,3 +17,6 @@ dist/
 
 .vercel
 .DS_Store
+
+# User-uploaded labour/expense attachments (path from UPLOADS_DIR in .env)
+/api/uploads/

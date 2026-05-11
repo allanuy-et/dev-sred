@@ -55,33 +55,71 @@ export function DateRangeFilter({
   const inputCls =
     'rounded-md border border-border bg-surface px-3 py-2 text-sm focus:border-border-strong focus:outline-2 focus:outline-offset-1 focus:outline-accent disabled:opacity-50'
 
+  // Open the native date picker on click anywhere in the input — same
+  // behavior as the `<Field type="date">` wrapper. Browsers only expose
+  // the calendar icon's tiny hit area by default; `showPicker()` widens
+  // that to the whole control.
+  function openPicker(e: React.MouseEvent<HTMLInputElement>) {
+    const el = e.currentTarget
+    if (typeof el.showPicker === 'function') {
+      try {
+        el.showPicker()
+      } catch {
+        // showPicker throws if disabled / not user-activated — ignore.
+      }
+    }
+  }
+
+  // When empty, hide the native `mm/dd/yyyy` placeholder via `text-transparent`
+  // (the date-edit shadow fields inherit text color) and overlay a "From" /
+  // "To" placeholder. Once a value is chosen, the overlay disappears and the
+  // text becomes visible again.
+  const emptyHideText =
+    '[&:not(:focus)]:text-transparent [&:not(:focus)::-webkit-calendar-picker-indicator]:opacity-60'
+
   return (
     <div className="flex items-center gap-2">
-      <input
-        type="date"
-        value={from}
-        onChange={(e) => {
-          const v = e.currentTarget.value
-          setFrom(v)
-          pushBoth(v, to)
-        }}
-        aria-label="From date"
-        className={inputCls}
-      />
+      <div className="relative">
+        <input
+          type="date"
+          value={from}
+          onChange={(e) => {
+            const v = e.currentTarget.value
+            setFrom(v)
+            pushBoth(v, to)
+          }}
+          onClick={openPicker}
+          aria-label="From date"
+          className={`${inputCls} ${from ? '' : emptyHideText}`}
+        />
+        {!from ? (
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-text-subtle">
+            From
+          </span>
+        ) : null}
+      </div>
       <span aria-hidden className="text-text-muted text-sm">
         →
       </span>
-      <input
-        type="date"
-        value={to}
-        onChange={(e) => {
-          const v = e.currentTarget.value
-          setTo(v)
-          pushBoth(from, v)
-        }}
-        aria-label="To date"
-        className={inputCls}
-      />
+      <div className="relative">
+        <input
+          type="date"
+          value={to}
+          onChange={(e) => {
+            const v = e.currentTarget.value
+            setTo(v)
+            pushBoth(from, v)
+          }}
+          onClick={openPicker}
+          aria-label="To date"
+          className={`${inputCls} ${to ? '' : emptyHideText}`}
+        />
+        {!to ? (
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-text-subtle">
+            To
+          </span>
+        ) : null}
+      </div>
       {from || to ? (
         <button
           type="button"

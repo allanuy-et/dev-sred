@@ -1,5 +1,6 @@
 import { BackChevron } from '@/components/BackChevron'
 import { Card } from '@/components/Card'
+import { getCurrentUser } from '@/lib/auth.server'
 
 // Reuse labour's selectOptions helpers — same employee + project select shape.
 import {
@@ -21,10 +22,13 @@ export default async function NewExpensePage({
   searchParams: Promise<{ projectId?: string }>
 }) {
   const { projectId: rawProjectId } = await searchParams
-  const [employees, projects] = await Promise.all([
+  const [employees, projects, currentUser] = await Promise.all([
     loadEmployees(),
     loadProjects(),
+    getCurrentUser(),
   ])
+  const lockedToEmployeeId =
+    currentUser?.accessLevel === 'standard' ? currentUser.id : undefined
 
   // Pre-select project from `?projectId=` when present and valid. Used by the
   // "Add expense" quick-action on the project detail page.
@@ -33,7 +37,7 @@ export default async function NewExpensePage({
 
   const initial: ExpenseFormInitial = {
     date: todayIso(),
-    employeeId: employees[0]?.id ?? '',
+    employeeId: lockedToEmployeeId ?? employees[0]?.id ?? '',
     projectId: preselectedProjectId ?? projects[0]?.id ?? '',
     cost: '',
     poNumber: '',
@@ -67,6 +71,7 @@ export default async function NewExpensePage({
           initial={initial}
           employees={employees}
           projects={projects}
+          lockedToEmployeeId={lockedToEmployeeId}
           onSuccessHref={returnHref}
           onCancelHref={returnHref}
         />

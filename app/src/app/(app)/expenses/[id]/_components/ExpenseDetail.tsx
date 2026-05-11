@@ -5,6 +5,7 @@ import { useState } from 'react'
 
 import type { ExpenseWithRelations } from '@sred/shared'
 
+import { AttachmentsViewList } from '@/components/AttachmentsViewList'
 import { Button } from '@/components/Button'
 import { ApiError } from '@/lib/api'
 import { clientApi } from '@/lib/api.client'
@@ -15,7 +16,10 @@ import {
 import { formatCurrency } from '@/lib/format'
 import { useFormatters } from '@/lib/timezone-context'
 
-import type { SelectOption } from '../../../labour/_lib/selectOptions'
+import type {
+  EmployeeOption,
+  SelectOption,
+} from '../../../labour/_lib/selectOptions'
 import {
   ExpenseForm,
   type ExpenseFormInitial,
@@ -23,14 +27,17 @@ import {
 
 export interface ExpenseDetailProps {
   entry: ExpenseWithRelations
-  employees: SelectOption[]
+  employees: EmployeeOption[]
   projects: SelectOption[]
+  /** Standard users have the employee picker locked to themselves. */
+  lockedToEmployeeId?: string
 }
 
 export function ExpenseDetail({
   entry,
   employees,
   projects,
+  lockedToEmployeeId,
 }: ExpenseDetailProps) {
   const router = useRouter()
   const { formatDate } = useFormatters()
@@ -78,8 +85,13 @@ export function ExpenseDetail({
         initial={initial}
         employees={employees}
         projects={projects}
-        onSuccessHref={`/expenses/${entry.id}`}
-        onCancelHref={`/expenses/${entry.id}`}
+        lockedToEmployeeId={lockedToEmployeeId}
+        attachments={entry.attachments}
+        onSuccess={() => {
+          setEditing(false)
+          router.refresh()
+        }}
+        onCancel={() => setEditing(false)}
       />
     )
   }
@@ -115,6 +127,11 @@ export function ExpenseDetail({
           className="sm:col-span-2"
         />
       </dl>
+
+      <AttachmentsViewList
+        parentKind="expense"
+        attachments={entry.attachments}
+      />
 
       {error ? (
         <p

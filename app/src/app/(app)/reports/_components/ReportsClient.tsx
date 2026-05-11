@@ -350,9 +350,11 @@ function MonthlyTable({
           <TH>Project</TH>
           <TH>Type</TH>
           <TH align="right">Hours</TH>
-          <TH align="right">Cost</TH>
+          <TH align="right">Labour</TH>
+          <TH align="right">Expense</TH>
+          <TH align="right">Total</TH>
           <TH align="right">SR&amp;ED Hours</TH>
-          <TH align="right">SR&amp;ED Cost</TH>
+          <TH align="right">SR&amp;ED Total</TH>
         </TR>
       </THead>
       <TBody>
@@ -364,13 +366,19 @@ function MonthlyTable({
               {formatHours(row.hours)}
             </TD>
             <TD align="right" className="tabular-nums">
+              {formatCurrency(row.labourCost)}
+            </TD>
+            <TD align="right" className="tabular-nums">
               {formatCurrency(row.cost)}
+            </TD>
+            <TD align="right" className="tabular-nums font-medium">
+              {formatCurrency(row.totalCost)}
             </TD>
             <TD align="right" className="tabular-nums">
               {formatHours(row.sredHours)}
             </TD>
             <TD align="right" className="tabular-nums">
-              {formatCurrency(row.sredCost)}
+              {formatCurrency(row.sredTotalCost)}
             </TD>
           </TR>
         ))}
@@ -396,8 +404,12 @@ function YearlyTable({
         month: m,
         hours: 0,
         cost: 0,
+        labourCost: 0,
+        totalCost: 0,
         sredHours: 0,
         sredCost: 0,
+        sredLabourCost: 0,
+        sredTotalCost: 0,
       }
     )
   })
@@ -407,9 +419,11 @@ function YearlyTable({
         <TR>
           <TH>Month</TH>
           <TH align="right">Hours</TH>
-          <TH align="right">Cost</TH>
+          <TH align="right">Labour</TH>
+          <TH align="right">Expense</TH>
+          <TH align="right">Total</TH>
           <TH align="right">SR&amp;ED Hours</TH>
-          <TH align="right">SR&amp;ED Cost</TH>
+          <TH align="right">SR&amp;ED Total</TH>
         </TR>
       </THead>
       <TBody>
@@ -420,13 +434,19 @@ function YearlyTable({
               {formatHours(row.hours)}
             </TD>
             <TD align="right" className="tabular-nums">
+              {formatCurrency(row.labourCost)}
+            </TD>
+            <TD align="right" className="tabular-nums">
               {formatCurrency(row.cost)}
+            </TD>
+            <TD align="right" className="tabular-nums font-medium">
+              {formatCurrency(row.totalCost)}
             </TD>
             <TD align="right" className="tabular-nums">
               {formatHours(row.sredHours)}
             </TD>
             <TD align="right" className="tabular-nums">
-              {formatCurrency(row.sredCost)}
+              {formatCurrency(row.sredTotalCost)}
             </TD>
           </TR>
         ))}
@@ -453,13 +473,19 @@ function TotalsRow({
         {formatHours(totals.hours)}
       </TD>
       <TD align="right" className="tabular-nums">
+        {formatCurrency(totals.labourCost)}
+      </TD>
+      <TD align="right" className="tabular-nums">
         {formatCurrency(totals.cost)}
+      </TD>
+      <TD align="right" className="tabular-nums font-medium">
+        {formatCurrency(totals.totalCost)}
       </TD>
       <TD align="right" className="tabular-nums">
         {formatHours(totals.sredHours)}
       </TD>
       <TD align="right" className="tabular-nums">
-        {formatCurrency(totals.sredCost)}
+        {formatCurrency(totals.sredTotalCost)}
       </TD>
     </TR>
   )

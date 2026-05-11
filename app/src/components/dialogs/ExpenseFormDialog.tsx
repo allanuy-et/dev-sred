@@ -9,17 +9,25 @@ import {
   ExpenseForm,
   type ExpenseFormInitial,
 } from '@/app/(app)/expenses/_components/ExpenseForm'
-import type { SelectOption } from '@/app/(app)/labour/_lib/selectOptions'
+import type {
+  EmployeeOption,
+  SelectOption,
+} from '@/app/(app)/labour/_lib/selectOptions'
 
 export interface ExpenseFormDialogProps {
   triggerLabel: string
   triggerVariant?: 'primary' | 'secondary'
   triggerSize?: 'default' | 'sm'
   triggerClassName?: string
-  employees: SelectOption[]
+  employees: EmployeeOption[]
   projects: SelectOption[]
   presetProjectId?: string
   presetEmployeeId?: string
+  /**
+   * Lock the employee picker to this id. Used for standard users who can
+   * only record expenses for themselves.
+   */
+  lockedToEmployeeId?: string
 }
 
 function todayIso(): string {
@@ -39,13 +47,15 @@ export function ExpenseFormDialog({
   projects,
   presetProjectId,
   presetEmployeeId,
+  lockedToEmployeeId,
 }: ExpenseFormDialogProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
 
   const initial: ExpenseFormInitial = {
     date: todayIso(),
-    employeeId: presetEmployeeId ?? employees[0]?.id ?? '',
+    employeeId:
+      lockedToEmployeeId ?? presetEmployeeId ?? employees[0]?.id ?? '',
     projectId: presetProjectId ?? projects[0]?.id ?? '',
     cost: '',
     poNumber: '',
@@ -70,6 +80,7 @@ export function ExpenseFormDialog({
           initial={initial}
           employees={employees}
           projects={projects}
+          lockedToEmployeeId={lockedToEmployeeId}
           onSuccess={() => {
             setOpen(false)
             router.refresh()

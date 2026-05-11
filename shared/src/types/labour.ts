@@ -28,9 +28,26 @@ export interface LabourEntry {
   updatedAt: string
 }
 
+export interface Attachment {
+  id: string
+  /** Relative path on the API server. Never used directly by the client — use
+   *  `/api/<kind>/attachments/:id/download` instead. */
+  filePath: string
+  originalName: string
+  mimeType: string
+  sizeBytes: number
+  uploadedBy: string | null
+  createdAt: string
+}
+
+export interface AttachmentListResponse {
+  attachments: Attachment[]
+}
+
 export interface LabourEntryWithRelations extends LabourEntry {
   employeeName: string
   projectName: string
+  attachments: Attachment[]
 }
 
 // Inputs accepted by POST /labour and PATCH /labour/:id.
@@ -47,6 +64,27 @@ export interface CreateLabourInput {
 }
 
 export type UpdateLabourInput = Partial<CreateLabourInput>
+
+// Inputs accepted by POST /labour/bulk.
+// Generates one entry per day in [startDate, endDate], optionally skipping
+// weekends. All entries share the same employee / project / hours / etc.
+export interface BulkCreateLabourInput {
+  employeeId: string
+  projectId: string
+  startDate: string
+  endDate: string
+  hours: number
+  labourTime: LabourTime
+  labourType: LabourType
+  objectiveEvidence: ObjectiveEvidence
+  notes?: string | null
+  skipWeekends?: boolean
+}
+
+export interface BulkCreateLabourResponse {
+  created: number
+  entries: LabourEntry[]
+}
 
 export interface LabourListResponse {
   entries: LabourEntryWithRelations[]

@@ -9,7 +9,10 @@ import {
   ProjectForm,
   type ProjectFormInitial,
 } from '@/app/(app)/projects/_components/ProjectForm'
-import type { SelectOption } from '@/app/(app)/labour/_lib/selectOptions'
+import type {
+  EmployeeOption,
+  SelectOption,
+} from '@/app/(app)/labour/_lib/selectOptions'
 
 export interface ProjectFormDialogProps {
   triggerLabel: string
@@ -17,7 +20,7 @@ export interface ProjectFormDialogProps {
   triggerSize?: 'default' | 'sm'
   triggerClassName?: string
   /** Employees available for the project-manager select. */
-  employees: SelectOption[]
+  employees: EmployeeOption[]
   /** Other projects available for the parent-project select. */
   parentProjects: SelectOption[]
 }

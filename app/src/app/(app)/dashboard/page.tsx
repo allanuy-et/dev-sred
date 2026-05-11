@@ -9,9 +9,14 @@ import { serverApi } from '@/lib/api.server'
 import { getCurrentUser } from '@/lib/auth.server'
 import { getIntlLocale } from '@/lib/i18n'
 
+import {
+  loadEmployees,
+  loadProjects,
+} from '../labour/_lib/selectOptions'
 import { ActivityTimeline } from './_components/ActivityTimeline'
 import { HoursByDayChart } from './_components/HoursByDayChart'
-import { ProjectPulseList } from './_components/ProjectPulseList'
+import { PulseCard } from './_components/PulseCard'
+import { QuickActions } from './_components/QuickActions'
 import { WeekHero } from './_components/WeekHero'
 
 async function loadDashboardData() {
@@ -42,9 +47,11 @@ function isoInTz(tz: string): string {
 }
 
 export default async function DashboardPage() {
-  const [user, data] = await Promise.all([
+  const [user, data, employees, projects] = await Promise.all([
     getCurrentUser(),
     loadDashboardData(),
+    loadEmployees('active'),
+    loadProjects('active'),
   ])
 
   if (!user) return null
@@ -75,6 +82,16 @@ export default async function DashboardPage() {
         summary={data.summary}
         tz={user.timezone}
         locale={locale}
+        actions={
+          <QuickActions
+            employees={employees}
+            projects={projects}
+            parentProjects={projects}
+            lockedToEmployeeId={
+              user.accessLevel === 'standard' ? user.id : undefined
+            }
+          />
+        }
       />
 
       <Card title="Hours by day">
@@ -83,13 +100,12 @@ export default async function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">
-          <Card title="Top projects this week">
-            <ProjectPulseList
-              rows={data.summary.byProject}
-              totalHours={data.summary.totals.hours}
-              locale={locale}
-            />
-          </Card>
+          <PulseCard
+            byProject={data.summary.byProject}
+            byEmployee={data.summary.byEmployee}
+            totalHours={data.summary.totals.hours}
+            locale={locale}
+          />
         </div>
         <div className="lg:col-span-2">
           <Card title="Activity">

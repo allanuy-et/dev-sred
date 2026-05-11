@@ -803,3 +803,91 @@ Also add a quick action to add labor and expense and then wins and when you crea
 
 ### 2026-05-11T15:43:06Z
 Okay, now apply the same formatting for everything else. Employee detail, expense detail, labor details, and then all the forms must be a model so that we can invoke it everywhere. So as an example when you're viewing a project and you create a labor from there, you don't have to navigate away from the project screen. This is a really good UX.
+
+### 2026-05-11T16:00:38Z
+Why is the project detail and employee detail screen not consistent? Project detail screen shows the recent labor and expenses on the right side.Whereas the employees shows it on the left side.keep them consistent and show those recent things on the right side.
+
+### 2026-05-11T16:07:49Z
+The model doesn't look correct. It's showing on the top left. It should be centered.
+
+### 2026-05-11T16:15:31Z
+On any input that are date, once it's clicked, it should show a date picker.
+
+### 2026-05-11T16:18:24Z
+Do a check on all date inputs, especially the filters. It's though it's still not using the new approach.
+
+### 2026-05-11T16:19:54Z
+In the labor screen, the filter for dates can you use from and to placeholder.
+
+### 2026-05-11T16:21:22Z
+Let's create a generic dropdown for all employees.The main text will be the employee name.And the subtext will be the email.Also add an avatar with the user's initials.
+
+### 2026-05-11T16:33:54Z
+I can't seem to add any labor entry.
+
+I keep getting this error:
+
+{error: "`hours` must be a number > 0 and <= 24"}
+error
+: 
+"`hours` must be a number > 0 and <= 24"
+
+Make sure that we surface that error from the server.
+
+### 2026-05-11T16:37:07Z
+If you already have this validation, can you add it as a client side validation as well?
+
+### 2026-05-11T16:40:39Z
+Something is off on the dates here. I tried to save a record on May sixteenth and it got saved on May fifteenth.Check how we're handling the time zone based on the preference.
+
+### 2026-05-11T16:42:24Z
+Let's add quick actions on the dashboard as well.
+
+### 2026-05-11T16:44:52Z
+Let's also add a way for to switch the graphs. Right now we're showing by project. It's also showed by employee.
+
+### 2026-05-11T16:49:52Z
+Can you review the spec document And see if roles are required? Right now we treat everybody as an admin.
+
+### 2026-05-11T16:53:56Z
+Can you point to me where it is mentioned that A limited user cannot login.
+
+### 2026-05-11T16:58:13Z
+1. yes block limited on login
+2. a standard user can only create record for himself.
+3. agreed
+
+When limited user tries to log in, make sure we say explicitly on the message that limit limited users cannot log in.
+
+### 2026-05-11T17:13:39Z
+Check the what to build section on the instructions. And see if what things have we built and what things have we not built.Give it to me in a tabular format.
+
+### 2026-05-11T17:15:56Z
+Okay, go into plan mode and let's brainstorm how we should be doing the multi-day and the wage history.
+
+### 2026-05-11T17:39:46Z
+Can you investigate why when I try to Update an employee. The button keep showing as loading state. It's stuck at saving..
+
+### 2026-05-11T17:47:49Z
+Okay, now let's plan the file attachments on labor and expense.
+
+### 2026-05-11T17:53:42Z
+add Inline preview in the plan
+
+### 2026-05-11T18:24:59Z
+I tried creating an expense with a that png file. It did not render it correctly.
+
+### 2026-05-11T18:25:51Z
+Do an analysis on the project. See if we have clear instructions on how to run the app. If user tries to f clone or fork this repo.They should be able to run this app fairly easily.
+
+### 2026-05-11T18:27:09Z
+Do it.
+
+### 2026-05-11T18:28:55Z
+Are we ready to commit this?
+
+### 2026-05-11T18:30:27Z
+add gitignore
+
+### 2026-05-11T18:31:45Z
+commit the changes

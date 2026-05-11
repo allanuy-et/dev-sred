@@ -8,6 +8,7 @@ import type {
   LabourListResponse,
   User,
   EmployeeResponse,
+  WageHistoryListResponse,
 } from '@sred/shared'
 
 import { BackChevron } from '@/components/BackChevron'
@@ -25,9 +26,11 @@ import { formatCurrency, formatDate, formatHours } from '@/lib/format'
 import {
   loadEmployees,
   loadProjects,
+  type EmployeeOption,
   type SelectOption,
 } from '../../labour/_lib/selectOptions'
 import { EmployeeDetail } from './_components/EmployeeDetail'
+import { WageHistoryCard } from './_components/WageHistoryCard'
 
 const RECENT_LIMIT = 10
 
@@ -68,6 +71,26 @@ async function loadRecentExpenses(
   }
 }
 
+async function loadWageHistory(employeeId: string) {
+  try {
+    const { history } = await serverApi<WageHistoryListResponse>(
+      `/employees/${employeeId}/wage-history`,
+    )
+    return history
+  } catch {
+    return []
+  }
+}
+
+function todayInTz(tz: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+}
+
 export default async function EmployeeDetailPage({
   params,
 }: {
@@ -88,11 +111,22 @@ export default async function EmployeeDetailPage({
 
   const tz = currentUser.timezone
   const locale = getIntlLocale(currentUser.language)
+  // Standard users only get the quick-add buttons on their own profile — the
+  // backend would reject a labour/expense for a different employee anyway,
+  // and showing a disabled-feeling form is worse UX than just omitting it.
+  const isOwnProfile = currentUser.id === employee.id
+  const canQuickAdd =
+    currentUser.accessLevel === 'admin' || isOwnProfile
+  const lockedToEmployeeId =
+    currentUser.accessLevel === 'standard' ? currentUser.id : undefined
 
-  const [labour, expenses] = await Promise.all([
+  const [labour, expenses, wageHistory] = await Promise.all([
     loadRecentLabour(employee.id),
     loadRecentExpenses(employee.id),
+    loadWageHistory(employee.id),
   ])
+  const todayIso = todayInTz(tz)
+  const canManageWage = currentUser.accessLevel === 'admin'
 
   const aside = (
     <>
@@ -103,6 +137,16 @@ export default async function EmployeeDetailPage({
         locale={locale}
         employees={employeeOptions}
         projects={projectOptions}
+        canQuickAdd={canQuickAdd}
+        lockedToEmployeeId={lockedToEmployeeId}
+      />
+      <WageHistoryCard
+        employee={employee}
+        history={wageHistory}
+        tz={tz}
+        locale={locale}
+        canManage={canManageWage}
+        todayIso={todayIso}
       />
       <RecentExpensesCard
         employeeId={employee.id}
@@ -111,6 +155,8 @@ export default async function EmployeeDetailPage({
         locale={locale}
         employees={employeeOptions}
         projects={projectOptions}
+        canQuickAdd={canQuickAdd}
+        lockedToEmployeeId={lockedToEmployeeId}
       />
     </>
   )
@@ -127,7 +173,11 @@ export default async function EmployeeDetailPage({
         </div>
       </header>
 
-      <EmployeeDetail employee={employee} aside={aside} />
+      <EmployeeDetail
+        employee={employee}
+        aside={aside}
+        canManage={currentUser.accessLevel === 'admin'}
+      />
     </div>
   )
 }
@@ -139,13 +189,17 @@ function RecentLabourCard({
   locale,
   employees,
   projects,
+  canQuickAdd,
+  lockedToEmployeeId,
 }: {
   employeeId: string
   entries: LabourEntryWithRelations[]
   tz: string
   locale: string
-  employees: SelectOption[]
+  employees: EmployeeOption[]
   projects: SelectOption[]
+  canQuickAdd: boolean
+  lockedToEmployeeId?: string
 }) {
   return (
     <Card
@@ -190,16 +244,19 @@ function RecentLabourCard({
           ))}
         </ul>
       )}
-      <div className="mt-4 border-t border-border pt-3">
-        <LabourFormDialog
-          triggerLabel="+ Add labour"
-          triggerVariant="secondary"
-          triggerSize="sm"
-          employees={employees}
-          projects={projects}
-          presetEmployeeId={employeeId}
-        />
-      </div>
+      {canQuickAdd ? (
+        <div className="mt-4 border-t border-border pt-3">
+          <LabourFormDialog
+            triggerLabel="+ Add labour"
+            triggerVariant="secondary"
+            triggerSize="sm"
+            employees={employees}
+            projects={projects}
+            presetEmployeeId={employeeId}
+            lockedToEmployeeId={lockedToEmployeeId}
+          />
+        </div>
+      ) : null}
     </Card>
   )
 }
@@ -211,13 +268,17 @@ function RecentExpensesCard({
   locale,
   employees,
   projects,
+  canQuickAdd,
+  lockedToEmployeeId,
 }: {
   employeeId: string
   entries: ExpenseWithRelations[]
   tz: string
   locale: string
-  employees: SelectOption[]
+  employees: EmployeeOption[]
   projects: SelectOption[]
+  canQuickAdd: boolean
+  lockedToEmployeeId?: string
 }) {
   return (
     <Card
@@ -262,16 +323,19 @@ function RecentExpensesCard({
           ))}
         </ul>
       )}
-      <div className="mt-4 border-t border-border pt-3">
-        <ExpenseFormDialog
-          triggerLabel="+ Add expense"
-          triggerVariant="secondary"
-          triggerSize="sm"
-          employees={employees}
-          projects={projects}
-          presetEmployeeId={employeeId}
-        />
-      </div>
+      {canQuickAdd ? (
+        <div className="mt-4 border-t border-border pt-3">
+          <ExpenseFormDialog
+            triggerLabel="+ Add expense"
+            triggerVariant="secondary"
+            triggerSize="sm"
+            employees={employees}
+            projects={projects}
+            presetEmployeeId={employeeId}
+            lockedToEmployeeId={lockedToEmployeeId}
+          />
+        </div>
+      ) : null}
     </Card>
   )
 }

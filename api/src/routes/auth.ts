@@ -61,6 +61,15 @@ router.post('/login', async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid credentials' })
     }
 
+    // Spec: "A limited user cannot login." We surface the reason explicitly
+    // (rather than hiding behind a generic 401) because the credentials were
+    // valid — the admin needs to know why their account is rejected.
+    if (row.access_level === 'limited') {
+      return res.status(403).json({
+        error: 'Limited users cannot sign in. Please contact your administrator.',
+      })
+    }
+
     const token = signToken({
       userId: row.id,
       email: row.email,

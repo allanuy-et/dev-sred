@@ -22,6 +22,13 @@
 // reads cleanly for the SR&ED accounting context.
 const DEFAULT_LOCALE = 'en-CA'
 
+// A `yyyy-mm-dd` date-only string represents a calendar day, not an instant.
+// `new Date("2026-05-16")` parses as UTC midnight, which when formatted in any
+// timezone west of UTC slips to the previous calendar day. So whenever we see
+// the date-only shape, anchor it to UTC and format in UTC — the tz argument
+// is for actual timestamps, not calendar dates.
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
 /** Format an ISO or yyyy-mm-dd string as `YYYY-MM-DD` in the given timezone. */
 export function formatDate(
   value: string | null | undefined,
@@ -29,10 +36,11 @@ export function formatDate(
   locale: string = DEFAULT_LOCALE,
 ): string {
   if (!value) return '—'
-  const date = new Date(value)
+  const isDateOnly = ISO_DATE_RE.test(value)
+  const date = isDateOnly ? new Date(`${value}T00:00:00Z`) : new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return new Intl.DateTimeFormat(locale, {
-    timeZone: tz,
+    timeZone: isDateOnly ? 'UTC' : tz,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -48,10 +56,15 @@ export function formatLongDate(
   tz: string,
   locale: string = DEFAULT_LOCALE,
 ): string {
-  const date = typeof value === 'string' ? new Date(value) : value
+  const isDateOnly = typeof value === 'string' && ISO_DATE_RE.test(value)
+  const date = isDateOnly
+    ? new Date(`${value}T00:00:00Z`)
+    : typeof value === 'string'
+      ? new Date(value)
+      : value
   if (Number.isNaN(date.getTime())) return ''
   return new Intl.DateTimeFormat(locale, {
-    timeZone: tz,
+    timeZone: isDateOnly ? 'UTC' : tz,
     weekday: 'long',
     year: 'numeric',
     month: 'long',

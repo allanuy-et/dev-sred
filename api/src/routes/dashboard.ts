@@ -2,6 +2,7 @@ import { Router } from 'express'
 import type {
   DailyHoursBucket,
   DashboardStats,
+  EmployeePulseRow,
   ProjectPulseRow,
   RecentActivityItem,
   WeekSummary,
@@ -173,6 +174,14 @@ interface ProjectRow {
   hours: string
 }
 
+interface EmployeeRow {
+  employee_id: string
+  first_name: string
+  last_name: string
+  email: string
+  hours: string
+}
+
 router.get('/week-summary', async (req, res, next) => {
   try {
     const userId = req.user!.userId
@@ -192,7 +201,7 @@ router.get('/week-summary', async (req, res, next) => {
     const me = meRes.rows[0]
     if (!me) return res.status(401).json({ error: 'Not authenticated' })
 
-    const [dailyRes, byProjectRes, prevRes] = await Promise.all([
+    const [dailyRes, byProjectRes, byEmployeeRes, prevRes] = await Promise.all([
       // Daily buckets, zero-filled via generate_series.
       // The subquery scopes labour rows to the caller's company before the join,
       // so days with no in-company activity stay at zero.
@@ -229,6 +238,25 @@ router.get('/week-summary', async (req, res, next) => {
          LIMIT 5`,
         [me.company_id, me.week_start, me.week_end]
       ),
+      // Top 5 employees by hours this week (company-scoped via the project join).
+      query<EmployeeRow>(
+        `SELECT
+           u.id                                AS employee_id,
+           u.first_name                        AS first_name,
+           u.last_name                         AS last_name,
+           u.email                             AS email,
+           COALESCE(SUM(l.hours), 0)::text     AS hours
+         FROM users u
+         JOIN labour_entries l ON l.employee_id = u.id
+         JOIN projects p ON p.id = l.project_id
+         WHERE p.company_id = $1
+           AND u.company_id = $1
+           AND l.date BETWEEN $2::date AND $3::date
+         GROUP BY u.id, u.first_name, u.last_name, u.email
+         ORDER BY SUM(l.hours) DESC
+         LIMIT 5`,
+        [me.company_id, me.week_start, me.week_end]
+      ),
       // Previous week total (for delta).
       query<{ total: string }>(
         `SELECT COALESCE(SUM(l.hours), 0)::text AS total
@@ -253,6 +281,14 @@ router.get('/week-summary', async (req, res, next) => {
       hours: Number(r.hours),
     }))
 
+    const byEmployee: EmployeePulseRow[] = byEmployeeRes.rows.map((r) => ({
+      employeeId: r.employee_id,
+      firstName: r.first_name,
+      lastName: r.last_name,
+      email: r.email,
+      hours: Number(r.hours),
+    }))
+
     const totalHours = daily.reduce((sum, d) => sum + d.hours, 0)
     const totalSred = daily.reduce((sum, d) => sum + d.sredHours, 0)
     const prevTotal = Number(prevRes.rows[0]?.total ?? 0)
@@ -261,6 +297,7 @@ router.get('/week-summary', async (req, res, next) => {
       weekStart: me.week_start,
       daily,
       byProject,
+      byEmployee,
       totals: {
         hours: totalHours,
         sredHours: totalSred,

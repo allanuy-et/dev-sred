@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 import type { WeekSummary } from '@sred/shared'
 
 import { formatLongDate, formatHours } from '@/lib/format'
@@ -7,15 +9,23 @@ export interface WeekHeroProps {
   summary: WeekSummary
   tz: string
   locale: string
+  /** Right-side action slot — typically the dashboard `<QuickActions>`. */
+  actions?: ReactNode
 }
 
-export function WeekHero({ companyName, summary, tz, locale }: WeekHeroProps) {
+export function WeekHero({
+  companyName,
+  summary,
+  tz,
+  locale,
+  actions,
+}: WeekHeroProps) {
   const { totals, deltaFromPrevWeek } = summary
   const today = formatLongDate(new Date(), tz, locale)
   const internalHours = totals.hours - totals.sredHours
 
   return (
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <header className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
       <div className="max-w-3xl">
         <h1 className="text-4xl font-semibold tracking-tight leading-tight">
           This week,{' '}
@@ -43,7 +53,10 @@ export function WeekHero({ companyName, summary, tz, locale }: WeekHeroProps) {
           <DeltaLabel hours={deltaFromPrevWeek} locale={locale} />
         </p>
       </div>
-      <p className="text-sm text-text-muted whitespace-nowrap">{today}</p>
+      <div className="flex flex-col items-start gap-3 sm:items-end">
+        <p className="text-sm text-text-muted whitespace-nowrap">{today}</p>
+        {actions}
+      </div>
     </header>
   )
 }

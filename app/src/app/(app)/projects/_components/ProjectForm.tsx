@@ -13,8 +13,9 @@ import type {
 } from '@sred/shared'
 
 import { Button } from '@/components/Button'
+import { EmployeePicker } from '@/components/EmployeePicker'
 import { Field, SelectField, TextAreaField } from '@/components/Field'
-import { ApiError } from '@/lib/api'
+import { ApiError, getServerErrorMessage } from '@/lib/api'
 import { clientApi } from '@/lib/api.client'
 import {
   PROJECT_PHASES,
@@ -23,7 +24,10 @@ import {
   PROJECT_TYPE_LABELS,
 } from '@/lib/project-labels'
 
-import type { SelectOption } from '../../labour/_lib/selectOptions'
+import type {
+  EmployeeOption,
+  SelectOption,
+} from '../../labour/_lib/selectOptions'
 
 export interface ProjectFormInitial {
   name: string
@@ -41,7 +45,7 @@ export interface ProjectFormProps {
   mode: 'create' | 'edit'
   initial: ProjectFormInitial
   /** Employees available for the project-manager select. */
-  employees: SelectOption[]
+  employees: EmployeeOption[]
   /** Other projects available for the parent-project select. */
   parentProjects: SelectOption[]
   /** Required for `edit` mode. */
@@ -141,13 +145,17 @@ export function ProjectForm({
         router.push(onSuccessHref)
         router.refresh()
       }
+      setSubmitting(false)
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError('Your session expired. Please sign in again.')
-      } else if (err instanceof ApiError && err.status === 400) {
-        setError('Please double-check the entry — something looked off.')
       } else {
-        setError('Could not save the project. Please try again.')
+        setError(
+          getServerErrorMessage(
+            err,
+            'Could not save the project. Please try again.',
+          ),
+        )
       }
       setSubmitting(false)
     }
@@ -227,19 +235,14 @@ export function ProjectForm({
           onChange={(e) => update('dueDate', e.currentTarget.value)}
         />
 
-        <SelectField
+        <EmployeePicker
           label="Project manager"
           className="sm:col-span-2"
           value={state.projectManagerId}
-          onChange={(e) => update('projectManagerId', e.currentTarget.value)}
-        >
-          <option value="">— Unassigned —</option>
-          {employees.map((emp) => (
-            <option key={emp.id} value={emp.id}>
-              {emp.label}
-            </option>
-          ))}
-        </SelectField>
+          onChange={(id) => update('projectManagerId', id)}
+          options={employees}
+          clearLabel="— Unassigned —"
+        />
       </div>
 
       <TextAreaField

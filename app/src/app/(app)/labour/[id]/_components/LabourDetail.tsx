@@ -5,6 +5,7 @@ import { useState } from 'react'
 
 import type { LabourEntryWithRelations } from '@sred/shared'
 
+import { AttachmentsViewList } from '@/components/AttachmentsViewList'
 import { Button } from '@/components/Button'
 import { ApiError } from '@/lib/api'
 import { clientApi } from '@/lib/api.client'
@@ -17,18 +18,21 @@ import {
 } from '@/lib/labour-labels'
 
 import { LabourForm, type LabourFormInitial } from '../../_components/LabourForm'
-import type { SelectOption } from '../../_lib/selectOptions'
+import type { EmployeeOption, SelectOption } from '../../_lib/selectOptions'
 
 export interface LabourDetailProps {
   entry: LabourEntryWithRelations
-  employees: SelectOption[]
+  employees: EmployeeOption[]
   projects: SelectOption[]
+  /** Standard users have the employee picker locked to themselves. */
+  lockedToEmployeeId?: string
 }
 
 export function LabourDetail({
   entry,
   employees,
   projects,
+  lockedToEmployeeId,
 }: LabourDetailProps) {
   const router = useRouter()
   const { formatDate } = useFormatters()
@@ -76,8 +80,13 @@ export function LabourDetail({
         initial={initial}
         employees={employees}
         projects={projects}
-        onSuccessHref={`/labour/${entry.id}`}
-        onCancelHref={`/labour/${entry.id}`}
+        lockedToEmployeeId={lockedToEmployeeId}
+        attachments={entry.attachments}
+        onSuccess={() => {
+          setEditing(false)
+          router.refresh()
+        }}
+        onCancel={() => setEditing(false)}
       />
     )
   }
@@ -113,6 +122,11 @@ export function LabourDetail({
           className="sm:col-span-2"
         />
       </dl>
+
+      <AttachmentsViewList
+        parentKind="labour"
+        attachments={entry.attachments}
+      />
 
       {error ? (
         <p

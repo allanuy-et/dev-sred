@@ -84,3 +84,33 @@ export interface EmployeeResponse {
 export interface EmployeeListResponse {
   employees: User[]
 }
+
+// One row in the wage_history table — the rate snapshot in effect from
+// `effectiveDate` until the next row's effectiveDate. `users.regular_rate`
+// etc. mirrors the most-recent past row.
+export interface WageHistoryEntry {
+  id: string
+  employeeId: string
+  effectiveDate: string
+  regularRate: number
+  overtimeRate: number
+  holidayRate: number
+  note: string | null
+  createdAt: string
+}
+
+export interface CreateWageHistoryInput {
+  effectiveDate: string
+  regularRate: number
+  overtimeRate: number
+  holidayRate: number
+  note?: string | null
+}
+
+export interface WageHistoryListResponse {
+  history: WageHistoryEntry[]
+}
+
+export interface WageHistoryEntryResponse {
+  entry: WageHistoryEntry
+}

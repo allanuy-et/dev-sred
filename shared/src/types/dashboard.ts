@@ -33,6 +33,14 @@ export interface ProjectPulseRow {
   hours: number
 }
 
+export interface EmployeePulseRow {
+  employeeId: string
+  firstName: string
+  lastName: string
+  email: string
+  hours: number
+}
+
 export interface WeekSummaryTotals {
   hours: number
   sredHours: number
@@ -46,6 +54,8 @@ export interface WeekSummary {
   daily: DailyHoursBucket[]
   /** Top N projects this week, sorted by `hours` desc. */
   byProject: ProjectPulseRow[]
+  /** Top N employees this week, sorted by `hours` desc. */
+  byEmployee: EmployeePulseRow[]
   totals: WeekSummaryTotals
   /** Hours this week minus hours last week. Positive = up. */
   deltaFromPrevWeek: number

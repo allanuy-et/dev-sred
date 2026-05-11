@@ -1,11 +1,22 @@
+'use client'
+
 import {
   forwardRef,
   useId,
   type InputHTMLAttributes,
+  type MouseEvent,
   type ReactNode,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react'
+
+const PICKER_TYPES = new Set([
+  'date',
+  'datetime-local',
+  'month',
+  'week',
+  'time',
+])
 
 function cn(...classes: Array<string | undefined | false>): string {
   return classes.filter(Boolean).join(' ')
@@ -65,6 +76,26 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
 ) {
   const generatedId = useId()
   const inputId = id ?? generatedId
+  const { onClick: userOnClick, type } = inputProps
+  // For temporal input types, open the native picker on click anywhere in the
+  // input (not just on the tiny calendar/clock icon). `showPicker()` is the
+  // standardized DOM method; we guard with `typeof` so older browsers fall
+  // back to default behavior.
+  const onClick =
+    type && PICKER_TYPES.has(type)
+      ? (e: MouseEvent<HTMLInputElement>) => {
+          userOnClick?.(e)
+          const el = e.currentTarget
+          if (typeof el.showPicker === 'function') {
+            try {
+              el.showPicker()
+            } catch {
+              // showPicker can throw if the input is disabled / not focused;
+              // safe to ignore — the user can still type.
+            }
+          }
+        }
+      : userOnClick
   return (
     <FieldShell
       id={inputId}
@@ -85,6 +116,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
             : 'border-border focus:border-border-strong',
         )}
         {...inputProps}
+        onClick={onClick}
       />
     </FieldShell>
   )

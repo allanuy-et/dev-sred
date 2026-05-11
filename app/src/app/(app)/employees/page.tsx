@@ -19,6 +19,7 @@ import {
   Table,
 } from '@/components/Table'
 import { serverApi } from '@/lib/api.server'
+import { getCurrentUser } from '@/lib/auth.server'
 import { ACCESS_LEVEL_LABELS } from '@/lib/employee-labels'
 import { parseStatusFilter } from '@/lib/status-filter'
 
@@ -66,9 +67,11 @@ export default async function EmployeesListPage({
 
   const params = new URLSearchParams({ status })
   if (q.trim().length >= 2) params.set('q', q.trim())
-  const { employees } = await serverApi<EmployeeListResponse>(
-    `/employees?${params.toString()}`,
-  )
+  const [{ employees }, currentUser] = await Promise.all([
+    serverApi<EmployeeListResponse>(`/employees?${params.toString()}`),
+    getCurrentUser(),
+  ])
+  const isAdmin = currentUser?.accessLevel === 'admin'
 
   const sortedEmployees = sortBy
     ? [...employees].sort((a, b) =>
@@ -96,9 +99,11 @@ export default async function EmployeesListPage({
             />
           </div>
           <StatusFilter value={status} />
-          <div className="sm:ml-auto">
-            <EmployeeFormDialog triggerLabel="+ Add Employee" />
-          </div>
+          {isAdmin ? (
+            <div className="sm:ml-auto">
+              <EmployeeFormDialog triggerLabel="+ Add Employee" />
+            </div>
+          ) : null}
         </>
       }
     >

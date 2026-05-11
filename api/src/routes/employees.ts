@@ -8,6 +8,7 @@ import type {
   User,
 } from '@sred/shared'
 import { query } from '../db.js'
+import { requireAdmin } from '../middleware/requireAdmin.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 
 const router = Router()
@@ -321,7 +322,7 @@ function isUniqueViolation(err: unknown): boolean {
   return typeof err === 'object' && err !== null && (err as { code?: string }).code === PG_UNIQUE_VIOLATION
 }
 
-router.post('/', async (req, res, next) => {
+router.post('/', requireAdmin, async (req, res, next) => {
   try {
     const parsed = parseCreateEmployee(req.body)
     if (!parsed.ok) return res.status(400).json({ error: parsed.error })
@@ -381,7 +382,23 @@ router.post('/', async (req, res, next) => {
          RETURNING ${USER_RETURNING}`,
         vals
       )
-      return res.status(201).json({ employee: toUser(result.rows[0]) })
+      const employee = toUser(result.rows[0])
+      // Seed an initial wage_history row so the user always has at least one
+      // historical snapshot to look back on (and so reports can compute cost
+      // for labour entries dated on/after the start date).
+      await query(
+        `INSERT INTO wage_history (employee_id, effective_date, regular_rate, overtime_rate, holiday_rate, note)
+         VALUES ($1, COALESCE($2::date, CURRENT_DATE), $3, $4, $5, $6)`,
+        [
+          employee.id,
+          employee.startDate,
+          employee.regularRate,
+          employee.overtimeRate,
+          employee.holidayRate,
+          'Initial rate',
+        ]
+      )
+      return res.status(201).json({ employee })
     } catch (err) {
       if (isUniqueViolation(err)) {
         return res.status(409).json({ error: 'Email already in use' })
@@ -393,7 +410,7 @@ router.post('/', async (req, res, next) => {
   }
 })
 
-router.patch('/:id', async (req, res, next) => {
+router.patch('/:id', requireAdmin, async (req, res, next) => {
   try {
     if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Not found' })
     if (!req.body || typeof req.body !== 'object') {
@@ -503,7 +520,31 @@ router.patch('/:id', async (req, res, next) => {
       )
       const row = result.rows[0]
       if (!row) return res.status(404).json({ error: 'Not found' })
-      return res.json({ employee: toUser(row) })
+      const employee = toUser(row)
+
+      // If any rate field changed, append a wage_history row dated today so
+      // the history stays in sync with the denormalized snapshot. This keeps
+      // the "Edit Employee → Save" path consistent with the dedicated
+      // "Add wage change" flow.
+      if (
+        'regularRate' in b ||
+        'overtimeRate' in b ||
+        'holidayRate' in b
+      ) {
+        await query(
+          `INSERT INTO wage_history (employee_id, effective_date, regular_rate, overtime_rate, holiday_rate, note)
+           VALUES ($1, CURRENT_DATE, $2, $3, $4, $5)`,
+          [
+            employee.id,
+            employee.regularRate,
+            employee.overtimeRate,
+            employee.holidayRate,
+            'Updated via employee edit',
+          ],
+        )
+      }
+
+      return res.json({ employee })
     } catch (err) {
       if (isUniqueViolation(err)) {
         return res.status(409).json({ error: 'Email already in use' })
@@ -531,7 +572,7 @@ async function setEmployeeStatus(
   return (result.rowCount ?? 0) > 0
 }
 
-router.post('/:id/deactivate', async (req, res, next) => {
+router.post('/:id/deactivate', requireAdmin, async (req, res, next) => {
   try {
     if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Not found' })
     const ok = await setEmployeeStatus(req.params.id, req.user!.userId, 'inactive')
@@ -542,12 +583,148 @@ router.post('/:id/deactivate', async (req, res, next) => {
   }
 })
 
-router.post('/:id/reactivate', async (req, res, next) => {
+router.post('/:id/reactivate', requireAdmin, async (req, res, next) => {
   try {
     if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Not found' })
     const ok = await setEmployeeStatus(req.params.id, req.user!.userId, 'active')
     if (!ok) return res.status(404).json({ error: 'Not found' })
     return res.json({ ok: true })
+  } catch (err) {
+    return next(err)
+  }
+})
+
+// ----------------------------------------------------------------------------
+// Wage history
+// ----------------------------------------------------------------------------
+
+interface WageHistoryRow {
+  id: string
+  employee_id: string
+  effective_date: string
+  regular_rate: string
+  overtime_rate: string
+  holiday_rate: string
+  note: string | null
+  created_at: Date | string
+}
+
+function toWageHistoryEntry(row: WageHistoryRow) {
+  return {
+    id: row.id,
+    employeeId: row.employee_id,
+    effectiveDate: row.effective_date,
+    regularRate: Number(row.regular_rate),
+    overtimeRate: Number(row.overtime_rate),
+    holidayRate: Number(row.holiday_rate),
+    note: row.note,
+    createdAt:
+      typeof row.created_at === 'string'
+        ? new Date(row.created_at).toISOString()
+        : row.created_at.toISOString(),
+  }
+}
+
+// List — readable by admin or the employee themselves.
+router.get('/:id/wage-history', async (req, res, next) => {
+  try {
+    if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Not found' })
+    if (
+      req.user!.accessLevel !== 'admin' &&
+      req.params.id !== req.user!.userId
+    ) {
+      return res.status(403).json({ error: 'Not authorized to view this wage history.' })
+    }
+    // Company-scope: make sure the employee belongs to caller's company.
+    // (Admins can only see their own company; standard users can only see
+    // themselves — both rules collapse to a single existence check.)
+    const exists = await query<{ exists: boolean }>(
+      `SELECT EXISTS(
+         SELECT 1 FROM users u
+         JOIN users me ON me.id = $1
+         WHERE u.id = $2 AND u.company_id = me.company_id
+       ) AS exists`,
+      [req.user!.userId, req.params.id]
+    )
+    if (!exists.rows[0]?.exists) return res.status(404).json({ error: 'Not found' })
+
+    const result = await query<WageHistoryRow>(
+      `SELECT id, employee_id, to_char(effective_date, 'YYYY-MM-DD') AS effective_date,
+              regular_rate, overtime_rate, holiday_rate, note, created_at
+       FROM wage_history
+       WHERE employee_id = $1
+       ORDER BY effective_date DESC, created_at DESC`,
+      [req.params.id]
+    )
+    return res.json({ history: result.rows.map(toWageHistoryEntry) })
+  } catch (err) {
+    return next(err)
+  }
+})
+
+// Create — admin-only. If the effective_date is on/before today (caller's tz),
+// also mirror the new rates onto users.* so the "current" snapshot stays in
+// sync. Future-dated rows sit in the table until someone runs them through.
+router.post('/:id/wage-history', requireAdmin, async (req, res, next) => {
+  try {
+    if (!isUuid(req.params.id)) return res.status(404).json({ error: 'Not found' })
+    if (!req.body || typeof req.body !== 'object') {
+      return res.status(400).json({ error: 'Body must be an object' })
+    }
+    const b = req.body as Record<string, unknown>
+    if (!isIsoDate(b.effectiveDate)) {
+      return res.status(400).json({ error: 'Invalid `effectiveDate` (expected YYYY-MM-DD)' })
+    }
+    for (const key of ['regularRate', 'overtimeRate', 'holidayRate'] as const) {
+      if (!isNonNegativeFiniteNumber(b[key])) {
+        return res.status(400).json({ error: `\`${key}\` must be a non-negative number` })
+      }
+    }
+    if (b.note !== undefined && b.note !== null && typeof b.note !== 'string') {
+      return res.status(400).json({ error: 'Invalid `note`' })
+    }
+
+    // Company-scope check.
+    const meRow = await query<{ exists: boolean; today: string }>(
+      `SELECT
+         EXISTS(
+           SELECT 1 FROM users u
+           JOIN users me ON me.id = $1
+           WHERE u.id = $2 AND u.company_id = me.company_id
+         ) AS exists,
+         to_char((now() AT TIME ZONE (SELECT timezone FROM users WHERE id = $1))::date, 'YYYY-MM-DD') AS today`,
+      [req.user!.userId, req.params.id]
+    )
+    if (!meRow.rows[0]?.exists) return res.status(404).json({ error: 'Not found' })
+    const todayIso = meRow.rows[0].today
+
+    const insertRes = await query<WageHistoryRow>(
+      `INSERT INTO wage_history (employee_id, effective_date, regular_rate, overtime_rate, holiday_rate, note)
+       VALUES ($1, $2::date, $3, $4, $5, $6)
+       RETURNING id, employee_id, to_char(effective_date, 'YYYY-MM-DD') AS effective_date,
+                 regular_rate, overtime_rate, holiday_rate, note, created_at`,
+      [
+        req.params.id,
+        b.effectiveDate,
+        b.regularRate,
+        b.overtimeRate,
+        b.holidayRate,
+        typeof b.note === 'string' && b.note.trim() !== '' ? b.note.trim() : null,
+      ]
+    )
+    const entry = toWageHistoryEntry(insertRes.rows[0])
+
+    // Mirror onto users.* when the row's effective date has already arrived.
+    if (entry.effectiveDate <= todayIso) {
+      await query(
+        `UPDATE users
+         SET regular_rate = $2, overtime_rate = $3, holiday_rate = $4, updated_at = now()
+         WHERE id = $1`,
+        [req.params.id, entry.regularRate, entry.overtimeRate, entry.holidayRate]
+      )
+    }
+
+    return res.status(201).json({ entry })
   } catch (err) {
     return next(err)
   }

@@ -9,7 +9,10 @@ import {
   LabourForm,
   type LabourFormInitial,
 } from '@/app/(app)/labour/_components/LabourForm'
-import type { SelectOption } from '@/app/(app)/labour/_lib/selectOptions'
+import type {
+  EmployeeOption,
+  SelectOption,
+} from '@/app/(app)/labour/_lib/selectOptions'
 
 export interface LabourFormDialogProps {
   /** Label inside the trigger button. */
@@ -24,12 +27,17 @@ export interface LabourFormDialogProps {
   triggerSize?: 'default' | 'sm'
   /** Optional className passthrough to wrap the trigger button. */
   triggerClassName?: string
-  employees: SelectOption[]
+  employees: EmployeeOption[]
   projects: SelectOption[]
   /** Pre-select a project (e.g. when invoked from a project's detail page). */
   presetProjectId?: string
   /** Pre-select an employee (e.g. when invoked from an employee's detail page). */
   presetEmployeeId?: string
+  /**
+   * Lock the employee picker to this id. Used for standard users who can
+   * only log labour for themselves.
+   */
+  lockedToEmployeeId?: string
 }
 
 function todayIso(): string {
@@ -53,13 +61,15 @@ export function LabourFormDialog({
   projects,
   presetProjectId,
   presetEmployeeId,
+  lockedToEmployeeId,
 }: LabourFormDialogProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
 
   const initial: LabourFormInitial = {
     date: todayIso(),
-    employeeId: presetEmployeeId ?? employees[0]?.id ?? '',
+    employeeId:
+      lockedToEmployeeId ?? presetEmployeeId ?? employees[0]?.id ?? '',
     projectId: presetProjectId ?? projects[0]?.id ?? '',
     hours: '',
     labourTime: 'regular',
@@ -88,6 +98,7 @@ export function LabourFormDialog({
           initial={initial}
           employees={employees}
           projects={projects}
+          lockedToEmployeeId={lockedToEmployeeId}
           onSuccess={() => {
             setOpen(false)
             router.refresh()

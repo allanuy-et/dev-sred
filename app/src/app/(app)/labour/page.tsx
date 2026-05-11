@@ -105,6 +105,9 @@ export default async function LabourListPage({
   if (!currentUser) return null
   const tz = currentUser.timezone
   const locale = getIntlLocale(currentUser.language)
+  // Standard users can only log labour for themselves; lock the picker.
+  const lockedToEmployeeId =
+    currentUser.accessLevel === 'standard' ? currentUser.id : undefined
 
   const sortedEntries = sortBy
     ? [...entries].sort(
@@ -137,6 +140,7 @@ export default async function LabourListPage({
               triggerLabel="+ Add Labour"
               employees={employeeOptions}
               projects={projectOptions}
+              lockedToEmployeeId={lockedToEmployeeId}
             />
           </div>
         </>

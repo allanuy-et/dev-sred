@@ -19,13 +19,20 @@ Login: `scott@etcweb.com` / `password`
 
 ## Run locally
 
-Requires Node 22+, Yarn 4, and a Postgres database (Docker or installed locally).
+Requires:
+
+- Node 22+ (an `.nvmrc` is committed — `nvm use` will pick the right version)
+- Yarn 4 (via Corepack — no global install needed)
+- Docker Desktop running (or a local Postgres on `:5432`)
 
 ```bash
 git clone <repo-url> sred-manager
 cd sred-manager
 
-# Easiest: bring up Postgres in Docker
+# One-time: lets Node activate the Yarn 4.1.0 pinned in package.json.
+corepack enable
+
+# Bring up Postgres in Docker (Docker Desktop must be running).
 docker compose up -d
 
 cp .env.example .env       # defaults match the docker-compose Postgres
@@ -36,6 +43,8 @@ yarn dev                   # starts /app on :3000 and /api on :4000
 ```
 
 Open <http://localhost:3000> and log in. To stop and wipe the DB: `docker compose down -v`.
+
+If `yarn install` fails on `bcrypt` (native build), install the platform toolchain and retry — on macOS that's `xcode-select --install`; on Debian/Ubuntu it's `sudo apt install build-essential python3`.
 
 To try the **SR&ED narrative** feature, set `ANTHROPIC_API_KEY` in `.env` (uncomment the line in `.env.example`) and restart the API. Without the key, the rest of the app works normally; the narrative button just returns a 503.
 
