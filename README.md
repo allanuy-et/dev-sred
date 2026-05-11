@@ -19,6 +19,8 @@ A rebuild of the Precision SR&ED Manager prototype for a one-day coder challenge
 - **Docker Desktop running** (used to bring up Postgres; or supply your own Postgres on `:5432`)
 - Yarn is installed automatically via Corepack — no global install needed
 
+Works on macOS, Linux, and Windows (native PowerShell, Git Bash, or WSL2). No native build tools required — all dependencies are pure JS. On Windows native, swap the `cp` step below for `copy`.
+
 ### One-time setup
 
 ```bash
@@ -63,7 +65,6 @@ To try the "Generate SR&ED narrative" button on the project detail page, set `AN
 
 ## Troubleshooting
 
-- **`yarn install` fails on `bcrypt` (native build):** install the platform toolchain and retry. macOS: `xcode-select --install`. Debian/Ubuntu: `sudo apt install build-essential python3`.
 - **Port 5432 / 3000 / 4000 already in use:** stop whatever's using them, or change `DATABASE_URL` / the workspace dev scripts.
 - **`yarn db:setup` says `DATABASE_URL is not set`:** you forgot `cp .env.example .env`. The API and `db:setup` load env vars from the repo-root `.env` via Node's `--env-file-if-exists` flag.
 - **Postgres connection refused:** `docker compose ps` to confirm the container is up and healthy; `docker compose logs postgres` for details.
