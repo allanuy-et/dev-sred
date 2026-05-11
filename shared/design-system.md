@@ -166,7 +166,7 @@ Centered, inside the card: `text-sm text-muted py-16 text-center`.
 
 ### `DetailLayout` — two-column "detail with related content"
 
-Used on any detail page that has primary info **and** related/recent records (Employee view → recent labour & recent expenses; Project view → narrative + recent activity).
+Used on any detail page that has primary info **and** related/recent records (Employee view → recent labour & recent expenses; Project view → recent labour + recent expenses).
 
 **Per explicit user direction:** related/aside is on the **LEFT**, primary detail on the **RIGHT**. The visual weight of the larger right column reads as "primary" once the user's eye lands.
 
@@ -189,7 +189,6 @@ Used on any detail page that has primary info **and** related/recent records (Em
 - `lg:` breakpoint is the split point. Below `lg`, main stacks **above** aside (`order-1` for main, `order-2` for aside).
 - Sidebar fixed at `320px`. Main flexes.
 - Sidebar cards use the **compact** Card variant (`p-8`, smaller title). Same pure-white surface as the main card — no muted fill.
-- For project detail, the narrative-generation panel belongs in the aside, not inline.
 
 ### `PageHeader`
 ```tsx

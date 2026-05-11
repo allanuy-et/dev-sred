@@ -11,7 +11,6 @@
     "db:setup": "tsx --env-file-if-exists=../.env db/setup.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.95.1",
     "@sred/shared": "workspace:*",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",

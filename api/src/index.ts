@@ -9,7 +9,6 @@ import projectsRouter from './routes/projects.js'
 import expensesRouter from './routes/expenses.js'
 import searchRouter from './routes/search.js'
 import reportsRouter from './routes/reports.js'
-import aiRouter from './routes/ai.js'
 import preferencesRouter from './routes/preferences.js'
 
 const app = express()
@@ -36,7 +35,6 @@ app.use('/projects', projectsRouter)
 app.use('/expenses', expensesRouter)
 app.use('/search', searchRouter)
 app.use('/reports', reportsRouter)
-app.use('/ai', aiRouter)
 app.use('/preferences', preferencesRouter)
 
 // Central error handler — keeps individual handlers thin. Logs server-side,

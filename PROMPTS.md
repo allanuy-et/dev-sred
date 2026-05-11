@@ -900,3 +900,21 @@ yes
 
 ### 2026-05-11T18:54:35Z
 So if someone look at this repo and follow the readme, they will be able to run it?
+
+### 2026-05-11T18:55:35Z
+yes
+
+### 2026-05-11T18:57:31Z
+Will this work if the person running it is on Windows computer?
+
+### 2026-05-11T18:58:53Z
+Let's swap it so that the whole thing works in any OS.
+
+### 2026-05-11T19:28:53Z
+Let's create a section on the readme file called features. We need to showcase what we've built. From the roles, preferences, localization.Attaching files, etc
+
+### 2026-05-11T19:31:03Z
+Let's remove the AI narrative feature. And also show where is the prompts are. Since this is part of the criteria.
+
+### 2026-05-11T19:35:12Z
+commit now

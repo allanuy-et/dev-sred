@@ -10,7 +10,10 @@
       "Bash(git -C /Users/paolouy/dev/sred-manager log --oneline -5)",
       "Bash(git -C /Users/paolouy/dev/sred-manager log --oneline --all -10)",
       "Bash(git -C /Users/paolouy/dev/sred-manager show --stat 7c57f37)",
-      "Bash(git -C /Users/paolouy/dev/sred-manager log --oneline -- .gitignore .nvmrc)"
+      "Bash(git -C /Users/paolouy/dev/sred-manager log --oneline -- .gitignore .nvmrc)",
+      "Bash(yarn install *)",
+      "Bash(../node_modules/.bin/tsc --noEmit)",
+      "Bash(node_modules/.bin/tsx -e ' *)"
     ]
   }
 }
