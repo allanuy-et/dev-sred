@@ -1,36 +1,44 @@
 import type {
-  DashboardStats,
-  RecentActivityItem,
-  RecentActivityKind,
+  CompanyPreferencesResponse,
   RecentActivityResponse,
+  WeekSummaryResponse,
 } from '@sred/shared'
 
 import { Card } from '@/components/Card'
 import { serverApi } from '@/lib/api.server'
 import { getCurrentUser } from '@/lib/auth.server'
-import { formatLongDate, formatRelativeTime } from '@/lib/format'
-import { getIntlLocale, getMessages, interpolate } from '@/lib/i18n'
+import { getIntlLocale } from '@/lib/i18n'
 
-const ACTIVITY_ICONS: Record<RecentActivityKind, string> = {
-  labour: '◷',
-  project: '▢',
-}
+import { ActivityTimeline } from './_components/ActivityTimeline'
+import { HoursByDayChart } from './_components/HoursByDayChart'
+import { ProjectPulseList } from './_components/ProjectPulseList'
+import { WeekHero } from './_components/WeekHero'
 
-async function loadDashboardData(): Promise<{
-  stats: DashboardStats | null
-  activity: RecentActivityItem[]
-}> {
-  // Tolerate one endpoint failing without breaking the whole page.
-  const [statsRes, activityRes] = await Promise.allSettled([
-    serverApi<DashboardStats>('/dashboard/stats'),
+async function loadDashboardData() {
+  // Each fetch can fail independently — the dashboard degrades gracefully
+  // rather than 500ing the whole page if one endpoint is down.
+  const [summaryRes, activityRes, companyRes] = await Promise.allSettled([
+    serverApi<WeekSummaryResponse>('/dashboard/week-summary'),
     serverApi<RecentActivityResponse>('/dashboard/recent-activity'),
+    serverApi<CompanyPreferencesResponse>('/preferences/company'),
   ])
-
   return {
-    stats: statsRes.status === 'fulfilled' ? statsRes.value : null,
+    summary: summaryRes.status === 'fulfilled' ? summaryRes.value : null,
     activity:
       activityRes.status === 'fulfilled' ? activityRes.value.activity : [],
+    company:
+      companyRes.status === 'fulfilled' ? companyRes.value.company : null,
   }
+}
+
+// Returns today's date as `YYYY-MM-DD` in the given timezone.
+function isoInTz(tz: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
 }
 
 export default async function DashboardPage() {
@@ -39,101 +47,60 @@ export default async function DashboardPage() {
     loadDashboardData(),
   ])
 
-  // Layout already guards, but this satisfies TS and protects against races.
   if (!user) return null
-
-  const t = getMessages(user.language)
   const locale = getIntlLocale(user.language)
-  const today = formatLongDate(new Date(), user.timezone, locale)
+
+  // Hero needs a summary; if the week-summary endpoint failed, fall back to a
+  // minimal banner instead of the rich hero.
+  if (!data.summary) {
+    return (
+      <div className="space-y-8">
+        <h1 className="text-4xl font-semibold tracking-tight">Dashboard</h1>
+        <Card>
+          <p className="text-sm text-text-muted">
+            We couldn&rsquo;t load this week&rsquo;s summary. Try refreshing.
+          </p>
+        </Card>
+      </div>
+    )
+  }
+
+  const companyName = data.company?.name ?? 'your team'
+  const todayIso = isoInTz(user.timezone)
 
   return (
     <div className="space-y-12">
-      <header>
-        <h1 className="text-4xl font-semibold tracking-tight">
-          {interpolate(t.dashboard.welcome, {
-            name: `${user.firstName} ${user.lastName}`,
-          })}
-        </h1>
-        <p className="mt-2 text-sm text-text-muted">{today}</p>
-      </header>
+      <WeekHero
+        companyName={companyName}
+        summary={data.summary}
+        tz={user.timezone}
+        locale={locale}
+      />
 
-      <section className="grid gap-6 sm:grid-cols-2">
-        <StatCard label="Hours this week" value={data.stats?.hoursThisWeek} />
-        <StatCard
-          label="Projects"
-          value={data.stats?.projectsCount}
-          helper={
-            data.stats ? `${data.stats.projectsInSred} SR&ED` : undefined
-          }
-        />
-      </section>
+      <Card title="Hours by day">
+        <HoursByDayChart daily={data.summary.daily} todayIso={todayIso} />
+      </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <Card title="Recent Activity">
-            {data.activity.length === 0 ? (
-              <div className="py-12 text-center text-sm text-text-muted">
-                No activity yet.
-              </div>
-            ) : (
-              <ul className="divide-y divide-border">
-                {data.activity.map((item) => (
-                  <li
-                    key={`${item.kind}-${item.id}`}
-                    className="flex items-center gap-3 py-3"
-                  >
-                    <span
-                      aria-hidden
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-bg text-xs text-text-muted"
-                    >
-                      {ACTIVITY_ICONS[item.kind] ?? '•'}
-                    </span>
-                    <div className="flex-1">
-                      <p className="text-sm text-text">{item.label}</p>
-                    </div>
-                    <time
-                      dateTime={item.ts}
-                      className="text-xs text-text-muted"
-                    >
-                      {formatRelativeTime(item.ts, user.timezone, locale)}
-                    </time>
-                  </li>
-                ))}
-              </ul>
-            )}
+      <div className="grid gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <Card title="Top projects this week">
+            <ProjectPulseList
+              rows={data.summary.byProject}
+              totalHours={data.summary.totals.hours}
+              locale={locale}
+            />
           </Card>
         </div>
-
-        <Card title="Hours by project">
-          <div className="py-12 text-center text-sm text-text-muted">
-            Chart coming soon.
-          </div>
-        </Card>
+        <div className="lg:col-span-2">
+          <Card title="Activity">
+            <ActivityTimeline
+              activity={data.activity}
+              tz={user.timezone}
+              locale={locale}
+            />
+          </Card>
+        </div>
       </div>
-    </div>
-  )
-}
-
-function StatCard({
-  label,
-  value,
-  helper,
-}: {
-  label: string
-  value: number | undefined
-  helper?: string
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-surface p-10 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
-        {label}
-      </p>
-      <p className="mt-3 text-5xl font-semibold tracking-tight tabular-nums">
-        {value ?? '—'}
-      </p>
-      {helper ? (
-        <p className="mt-2 text-xs text-text-muted">{helper}</p>
-      ) : null}
     </div>
   )
 }
