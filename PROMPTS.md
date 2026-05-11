@@ -800,3 +800,6 @@ Instead of having the back to projects button and upright added right before the
 Remove the S R D narrative section
 add a right section on this page showing the related labor or expenses for this project.
 Also add a quick action to add labor and expense and then wins and when you create a record from this page auto-select the project
+
+### 2026-05-11T15:43:06Z
+Okay, now apply the same formatting for everything else. Employee detail, expense detail, labor details, and then all the forms must be a model so that we can invoke it everywhere. So as an example when you're viewing a project and you create a labor from there, you don't have to navigate away from the project screen. This is a really good UX.

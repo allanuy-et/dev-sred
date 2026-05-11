@@ -2,9 +2,9 @@ import Link from 'next/link'
 
 import type { ExpenseListResponse, ExpenseWithRelations } from '@sred/shared'
 
-import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { DateRangeFilter } from '@/components/DateRangeFilter'
+import { ExpenseFormDialog } from '@/components/dialogs/ExpenseFormDialog'
 import { ListLayout } from '@/components/ListLayout'
 import { SearchBar } from '@/components/SearchBar'
 import { SortableTH, type SortDirection } from '@/components/SortableTH'
@@ -22,6 +22,8 @@ import { getCurrentUser } from '@/lib/auth.server'
 import { EXPENSE_TYPE_LABELS } from '@/lib/expense-labels'
 import { formatCurrency, formatDate } from '@/lib/format'
 import { getIntlLocale } from '@/lib/i18n'
+
+import { loadEmployees, loadProjects } from '../labour/_lib/selectOptions'
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -88,8 +90,15 @@ export default async function ExpensesListPage({
   if (from) params.set('from', from)
   if (to) params.set('to', to)
 
-  const [{ entries, total }, currentUser] = await Promise.all([
+  const [
+    { entries, total },
+    employeeOptions,
+    projectOptions,
+    currentUser,
+  ] = await Promise.all([
     serverApi<ExpenseListResponse>(`/expenses?${params.toString()}`),
+    loadEmployees('all'),
+    loadProjects('all'),
     getCurrentUser(),
   ])
 
@@ -124,9 +133,11 @@ export default async function ExpensesListPage({
           </div>
           <DateRangeFilter initialFrom={from} initialTo={to} />
           <div className="sm:ml-auto">
-            <Link href="/expenses/new">
-              <Button>+ Add Expense</Button>
-            </Link>
+            <ExpenseFormDialog
+              triggerLabel="+ Add Expense"
+              employees={employeeOptions}
+              projects={projectOptions}
+            />
           </div>
         </>
       }

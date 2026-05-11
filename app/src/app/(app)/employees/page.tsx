@@ -3,8 +3,8 @@ import Link from 'next/link'
 import type { EmployeeListResponse, User } from '@sred/shared'
 
 import { Badge } from '@/components/Badge'
-import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
+import { EmployeeFormDialog } from '@/components/dialogs/EmployeeFormDialog'
 import { ListLayout } from '@/components/ListLayout'
 import { SearchBar } from '@/components/SearchBar'
 import { SortableTH, type SortDirection } from '@/components/SortableTH'
@@ -97,9 +97,7 @@ export default async function EmployeesListPage({
           </div>
           <StatusFilter value={status} />
           <div className="sm:ml-auto">
-            <Link href="/employees/new">
-              <Button>+ Add Employee</Button>
-            </Link>
+            <EmployeeFormDialog triggerLabel="+ Add Employee" />
           </div>
         </>
       }

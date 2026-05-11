@@ -1,5 +1,4 @@
-import Link from 'next/link'
-
+import { BackChevron } from '@/components/BackChevron'
 import { Card } from '@/components/Card'
 
 import { loadEmployees, loadProjects } from '../../labour/_lib/selectOptions'
@@ -28,7 +27,8 @@ export default async function NewProjectPage() {
 
   return (
     <div className="space-y-12">
-      <header className="flex items-end justify-between gap-4">
+      <header className="flex items-center gap-3">
+        <BackChevron href="/projects" label="Back to projects" />
         <div>
           <h1 className="text-4xl font-semibold tracking-tight">
             New project
@@ -37,12 +37,6 @@ export default async function NewProjectPage() {
             Create a project to track labour and expenses against.
           </p>
         </div>
-        <Link
-          href="/projects"
-          className="text-sm font-medium text-text-muted hover:text-text"
-        >
-          ← Back to projects
-        </Link>
       </header>
 
       <Card>

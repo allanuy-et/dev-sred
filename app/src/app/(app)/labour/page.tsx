@@ -2,9 +2,9 @@ import Link from 'next/link'
 
 import type { LabourEntryWithRelations, LabourListResponse } from '@sred/shared'
 
-import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { DateRangeFilter } from '@/components/DateRangeFilter'
+import { LabourFormDialog } from '@/components/dialogs/LabourFormDialog'
 import { ListLayout } from '@/components/ListLayout'
 import { SearchBar } from '@/components/SearchBar'
 import { SortableTH, type SortDirection } from '@/components/SortableTH'
@@ -22,6 +22,8 @@ import { getCurrentUser } from '@/lib/auth.server'
 import { formatDate, formatHours } from '@/lib/format'
 import { getIntlLocale } from '@/lib/i18n'
 import { LABOUR_TYPE_LABELS } from '@/lib/labour-labels'
+
+import { loadEmployees, loadProjects } from './_lib/selectOptions'
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -88,8 +90,15 @@ export default async function LabourListPage({
   if (from) params.set('from', from)
   if (to) params.set('to', to)
 
-  const [{ entries, total }, currentUser] = await Promise.all([
+  const [
+    { entries, total },
+    employeeOptions,
+    projectOptions,
+    currentUser,
+  ] = await Promise.all([
     serverApi<LabourListResponse>(`/labour?${params.toString()}`),
+    loadEmployees('all'),
+    loadProjects('all'),
     getCurrentUser(),
   ])
 
@@ -124,9 +133,11 @@ export default async function LabourListPage({
           </div>
           <DateRangeFilter initialFrom={from} initialTo={to} />
           <div className="sm:ml-auto">
-            <Link href="/labour/new">
-              <Button>+ Add Labour</Button>
-            </Link>
+            <LabourFormDialog
+              triggerLabel="+ Add Labour"
+              employees={employeeOptions}
+              projects={projectOptions}
+            />
           </div>
         </>
       }

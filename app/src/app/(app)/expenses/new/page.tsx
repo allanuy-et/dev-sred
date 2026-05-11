@@ -1,5 +1,4 @@
-import Link from 'next/link'
-
+import { BackChevron } from '@/components/BackChevron'
 import { Card } from '@/components/Card'
 
 // Reuse labour's selectOptions helpers — same employee + project select shape.
@@ -49,19 +48,17 @@ export default async function NewExpensePage({
 
   return (
     <div className="space-y-12">
-      <header className="flex items-end justify-between gap-4">
+      <header className="flex items-center gap-3">
+        <BackChevron
+          href={returnHref}
+          label={isFromProject ? 'Back to project' : 'Back to expenses'}
+        />
         <div>
           <h1 className="text-4xl font-semibold tracking-tight">New expense</h1>
           <p className="mt-2 text-sm text-text-muted">
             Record a cost against a project.
           </p>
         </div>
-        <Link
-          href={returnHref}
-          className="text-sm font-medium text-text-muted hover:text-text"
-        >
-          ← {isFromProject ? 'Back to project' : 'Back to expenses'}
-        </Link>
       </header>
 
       <Card>

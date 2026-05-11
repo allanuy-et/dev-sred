@@ -1,5 +1,4 @@
-import Link from 'next/link'
-
+import { BackChevron } from '@/components/BackChevron'
 import { Card } from '@/components/Card'
 
 import { LabourForm, type LabourFormInitial } from '../_components/LabourForm'
@@ -44,7 +43,11 @@ export default async function NewLabourPage({
 
   return (
     <div className="space-y-12">
-      <header className="flex items-end justify-between gap-4">
+      <header className="flex items-center gap-3">
+        <BackChevron
+          href={returnHref}
+          label={isFromProject ? 'Back to project' : 'Back to labour'}
+        />
         <div>
           <h1 className="text-4xl font-semibold tracking-tight">
             New labour entry
@@ -53,12 +56,6 @@ export default async function NewLabourPage({
             Log time against a project.
           </p>
         </div>
-        <Link
-          href={returnHref}
-          className="text-sm font-medium text-text-muted hover:text-text"
-        >
-          ← {isFromProject ? 'Back to project' : 'Back to labour'}
-        </Link>
       </header>
 
       <Card>

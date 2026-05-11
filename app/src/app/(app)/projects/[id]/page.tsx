@@ -10,7 +10,10 @@ import type {
   ProjectResponse,
 } from '@sred/shared'
 
+import { BackChevron } from '@/components/BackChevron'
 import { Card } from '@/components/Card'
+import { ExpenseFormDialog } from '@/components/dialogs/ExpenseFormDialog'
+import { LabourFormDialog } from '@/components/dialogs/LabourFormDialog'
 import { ApiError } from '@/lib/api'
 import { serverApi } from '@/lib/api.server'
 import { getCurrentUser } from '@/lib/auth.server'
@@ -19,7 +22,11 @@ import { formatCurrency, formatDate, formatHours } from '@/lib/format'
 import { getIntlLocale } from '@/lib/i18n'
 import { LABOUR_TYPE_LABELS } from '@/lib/labour-labels'
 
-import { loadEmployees, loadProjects } from '../../labour/_lib/selectOptions'
+import {
+  loadEmployees,
+  loadProjects,
+  type SelectOption,
+} from '../../labour/_lib/selectOptions'
 import { ProjectDetail } from './_components/ProjectDetail'
 
 const RECENT_LIMIT = 8
@@ -98,12 +105,16 @@ export default async function ProjectDetailPage({
         entries={labour}
         tz={tz}
         locale={locale}
+        employees={employees}
+        projects={allProjects}
       />
       <RecentExpensesCard
         projectId={project.id}
         entries={expenses}
         tz={tz}
         locale={locale}
+        employees={employees}
+        projects={allProjects}
       />
     </>
   )
@@ -111,13 +122,7 @@ export default async function ProjectDetailPage({
   return (
     <div className="space-y-12">
       <header className="flex items-center gap-3">
-        <Link
-          href="/projects"
-          aria-label="Back to projects"
-          className="-ml-1 inline-flex h-9 w-9 items-center justify-center rounded-md text-text-muted hover:bg-surface-hover hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          <ChevronLeftIcon />
-        </Link>
+        <BackChevron href="/projects" label="Back to projects" />
         <div>
           <h1 className="text-4xl font-semibold tracking-tight">
             {project.name}
@@ -138,34 +143,20 @@ export default async function ProjectDetailPage({
   )
 }
 
-function ChevronLeftIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <polyline points="15 18 9 12 15 6" />
-    </svg>
-  )
-}
-
 function RecentLabourCard({
   projectId,
   entries,
   tz,
   locale,
+  employees,
+  projects,
 }: {
   projectId: string
   entries: LabourEntryWithRelations[]
   tz: string
   locale: string
+  employees: SelectOption[]
+  projects: SelectOption[]
 }) {
   return (
     <Card
@@ -213,12 +204,14 @@ function RecentLabourCard({
         </ul>
       )}
       <div className="mt-4 border-t border-border pt-3">
-        <Link
-          href={`/labour/new?projectId=${projectId}`}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text hover:bg-surface-hover"
-        >
-          + Add labour
-        </Link>
+        <LabourFormDialog
+          triggerLabel="+ Add labour"
+          triggerVariant="secondary"
+          triggerSize="sm"
+          employees={employees}
+          projects={projects}
+          presetProjectId={projectId}
+        />
       </div>
     </Card>
   )
@@ -229,11 +222,15 @@ function RecentExpensesCard({
   entries,
   tz,
   locale,
+  employees,
+  projects,
 }: {
   projectId: string
   entries: ExpenseWithRelations[]
   tz: string
   locale: string
+  employees: SelectOption[]
+  projects: SelectOption[]
 }) {
   return (
     <Card
@@ -281,12 +278,14 @@ function RecentExpensesCard({
         </ul>
       )}
       <div className="mt-4 border-t border-border pt-3">
-        <Link
-          href={`/expenses/new?projectId=${projectId}`}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text hover:bg-surface-hover"
-        >
-          + Add expense
-        </Link>
+        <ExpenseFormDialog
+          triggerLabel="+ Add expense"
+          triggerVariant="secondary"
+          triggerSize="sm"
+          employees={employees}
+          projects={projects}
+          presetProjectId={projectId}
+        />
       </div>
     </Card>
   )

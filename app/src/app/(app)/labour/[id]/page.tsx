@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import type {
@@ -6,6 +5,7 @@ import type {
   LabourEntryWithRelationsResponse,
 } from '@sred/shared'
 
+import { BackChevron } from '@/components/BackChevron'
 import { Card } from '@/components/Card'
 import { ApiError } from '@/lib/api'
 import { serverApi } from '@/lib/api.server'
@@ -44,7 +44,8 @@ export default async function LabourDetailPage({
 
   return (
     <div className="space-y-12">
-      <header className="flex items-end justify-between gap-4">
+      <header className="flex items-center gap-3">
+        <BackChevron href="/labour" label="Back to labour" />
         <div>
           <h1 className="text-4xl font-semibold tracking-tight">
             Labour entry
@@ -53,12 +54,6 @@ export default async function LabourDetailPage({
             {entry.employeeName} · {entry.projectName}
           </p>
         </div>
-        <Link
-          href="/labour"
-          className="text-sm font-medium text-text-muted hover:text-text"
-        >
-          ← Back to labour
-        </Link>
       </header>
 
       <Card>

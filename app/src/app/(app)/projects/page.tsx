@@ -7,8 +7,8 @@ import type {
   User,
 } from '@sred/shared'
 
-import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
+import { ProjectFormDialog } from '@/components/dialogs/ProjectFormDialog'
 import { ListLayout } from '@/components/ListLayout'
 import {
   ProjectTypeFilter,
@@ -32,6 +32,8 @@ import { formatDate } from '@/lib/format'
 import { getIntlLocale } from '@/lib/i18n'
 import { PROJECT_PHASE_LABELS } from '@/lib/project-labels'
 import { parseStatusFilter } from '@/lib/status-filter'
+
+import { loadEmployees, loadProjects } from '../labour/_lib/selectOptions'
 
 function managerName(user: User | undefined): string {
   if (!user) return '—'
@@ -93,9 +95,17 @@ export default async function ProjectsListPage({
   const params = new URLSearchParams({ status })
   if (q.trim().length >= 2) params.set('q', q.trim())
 
-  const [{ projects: allProjects }, { employees }, currentUser] = await Promise.all([
+  const [
+    { projects: allProjects },
+    { employees },
+    employeeOptions,
+    parentProjectOptions,
+    currentUser,
+  ] = await Promise.all([
     serverApi<ProjectListResponse>(`/projects?${params.toString()}`),
     serverApi<EmployeeListResponse>('/employees?status=all'),
+    loadEmployees('all'),
+    loadProjects('all'),
     getCurrentUser(),
   ])
 
@@ -151,9 +161,11 @@ export default async function ProjectsListPage({
           <StatusFilter value={status} />
           <ProjectTypeFilter value={typeFilter} />
           <div className="sm:ml-auto">
-            <Link href="/projects/new">
-              <Button>+ Add Project</Button>
-            </Link>
+            <ProjectFormDialog
+              triggerLabel="+ Add Project"
+              employees={employeeOptions}
+              parentProjects={parentProjectOptions}
+            />
           </div>
         </>
       }

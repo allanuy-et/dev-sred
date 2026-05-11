@@ -45,10 +45,24 @@ export interface EmployeeFormProps {
   initial: EmployeeFormInitial
   /** Required for `edit` mode. */
   employeeId?: string
-  /** Where to navigate on a successful save. Defaults to `/employees`. */
+  /**
+   * Where to navigate on a successful save. Ignored when `onSuccess` is
+   * provided. Defaults to `/employees`.
+   */
   onSuccessHref?: string
   /** Optional secondary action (e.g. cancel back to detail). */
   onCancelHref?: string
+  /**
+   * Callback fired after a successful save. When provided, the form does
+   * NOT navigate; the caller is responsible for closing a modal /
+   * refreshing the page / etc.
+   */
+  onSuccess?: () => void
+  /**
+   * Callback fired when the user clicks Cancel. When provided, the form
+   * does NOT navigate; the caller decides what "cancel" means.
+   */
+  onCancel?: () => void
 }
 
 function toOptionalNumber(value: number | ''): number | undefined {
@@ -66,6 +80,8 @@ export function EmployeeForm({
   employeeId,
   onSuccessHref = '/employees',
   onCancelHref,
+  onSuccess,
+  onCancel,
 }: EmployeeFormProps) {
   const router = useRouter()
   const [state, setState] = useState<EmployeeFormInitial>(initial)
@@ -141,8 +157,12 @@ export function EmployeeForm({
           body,
         })
       }
-      router.push(onSuccessHref)
-      router.refresh()
+      if (onSuccess) {
+        onSuccess()
+      } else {
+        router.push(onSuccessHref)
+        router.refresh()
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError('Your session expired. Please sign in again.')
@@ -318,11 +338,14 @@ export function EmployeeForm({
       ) : null}
 
       <div className="flex items-center justify-end gap-2">
-        {onCancelHref ? (
+        {onCancel || onCancelHref ? (
           <Button
             type="button"
             variant="secondary"
-            onClick={() => router.push(onCancelHref)}
+            onClick={() => {
+              if (onCancel) onCancel()
+              else if (onCancelHref) router.push(onCancelHref)
+            }}
             disabled={submitting}
           >
             Cancel

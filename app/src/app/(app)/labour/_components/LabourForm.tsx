@@ -47,10 +47,24 @@ export interface LabourFormProps {
   projects: SelectOption[]
   /** Required for `edit` mode. */
   entryId?: string
-  /** Where to navigate on a successful save. Defaults to `/labour`. */
+  /**
+   * Where to navigate on a successful save. Ignored when `onSuccess` is
+   * provided. Defaults to `/labour`.
+   */
   onSuccessHref?: string
   /** Optional secondary action (e.g. cancel back to detail). */
   onCancelHref?: string
+  /**
+   * Callback fired after a successful save. When provided, the form does
+   * NOT navigate; the caller is responsible for closing a modal /
+   * refreshing the page / etc.
+   */
+  onSuccess?: () => void
+  /**
+   * Callback fired when the user clicks Cancel. When provided, the form
+   * does NOT navigate; the caller decides what "cancel" means.
+   */
+  onCancel?: () => void
 }
 
 // The POST/PATCH body matches the shared `CreateLabourInput` shape exactly.
@@ -64,6 +78,8 @@ export function LabourForm({
   entryId,
   onSuccessHref = '/labour',
   onCancelHref,
+  onSuccess,
+  onCancel,
 }: LabourFormProps) {
   const router = useRouter()
   const [state, setState] = useState<LabourFormInitial>(initial)
@@ -121,8 +137,12 @@ export function LabourForm({
           body,
         })
       }
-      router.push(onSuccessHref)
-      router.refresh()
+      if (onSuccess) {
+        onSuccess()
+      } else {
+        router.push(onSuccessHref)
+        router.refresh()
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError('Your session expired. Please sign in again.')
@@ -255,11 +275,14 @@ export function LabourForm({
       ) : null}
 
       <div className="flex items-center justify-end gap-2">
-        {onCancelHref ? (
+        {onCancel || onCancelHref ? (
           <Button
             type="button"
             variant="secondary"
-            onClick={() => router.push(onCancelHref)}
+            onClick={() => {
+              if (onCancel) onCancel()
+              else if (onCancelHref) router.push(onCancelHref)
+            }}
             disabled={submitting}
           >
             Cancel

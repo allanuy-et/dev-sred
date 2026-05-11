@@ -10,7 +10,10 @@ import type {
   EmployeeResponse,
 } from '@sred/shared'
 
+import { BackChevron } from '@/components/BackChevron'
 import { Card } from '@/components/Card'
+import { ExpenseFormDialog } from '@/components/dialogs/ExpenseFormDialog'
+import { LabourFormDialog } from '@/components/dialogs/LabourFormDialog'
 import { ApiError } from '@/lib/api'
 import { serverApi } from '@/lib/api.server'
 import { getCurrentUser } from '@/lib/auth.server'
@@ -19,6 +22,11 @@ import { LABOUR_TYPE_LABELS } from '@/lib/labour-labels'
 import { EXPENSE_TYPE_LABELS } from '@/lib/expense-labels'
 import { formatCurrency, formatDate, formatHours } from '@/lib/format'
 
+import {
+  loadEmployees,
+  loadProjects,
+  type SelectOption,
+} from '../../labour/_lib/selectOptions'
 import { EmployeeDetail } from './_components/EmployeeDetail'
 
 const RECENT_LIMIT = 10
@@ -66,10 +74,13 @@ export default async function EmployeeDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const [employee, currentUser] = await Promise.all([
-    loadEmployee(id),
-    getCurrentUser(),
-  ])
+  const [employee, employeeOptions, projectOptions, currentUser] =
+    await Promise.all([
+      loadEmployee(id),
+      loadEmployees('all'),
+      loadProjects('all'),
+      getCurrentUser(),
+    ])
 
   if (!employee) notFound()
   // Layout already gates, but TS doesn't know that. Bail safely.
@@ -90,31 +101,30 @@ export default async function EmployeeDetailPage({
         entries={labour}
         tz={tz}
         locale={locale}
+        employees={employeeOptions}
+        projects={projectOptions}
       />
       <RecentExpensesCard
         employeeId={employee.id}
         entries={expenses}
         tz={tz}
         locale={locale}
+        employees={employeeOptions}
+        projects={projectOptions}
       />
     </>
   )
 
   return (
     <div className="space-y-12">
-      <header className="flex items-end justify-between gap-4">
+      <header className="flex items-center gap-3">
+        <BackChevron href="/employees" label="Back to employees" />
         <div>
           <h1 className="text-4xl font-semibold tracking-tight">
             {employee.firstName} {employee.lastName}
           </h1>
           <p className="mt-2 text-sm text-text-muted">{employee.email}</p>
         </div>
-        <Link
-          href="/employees"
-          className="text-sm font-medium text-text-muted hover:text-text"
-        >
-          ← Back to employees
-        </Link>
       </header>
 
       <EmployeeDetail employee={employee} aside={aside} />
@@ -127,11 +137,15 @@ function RecentLabourCard({
   entries,
   tz,
   locale,
+  employees,
+  projects,
 }: {
   employeeId: string
   entries: LabourEntryWithRelations[]
   tz: string
   locale: string
+  employees: SelectOption[]
+  projects: SelectOption[]
 }) {
   return (
     <Card
@@ -176,6 +190,16 @@ function RecentLabourCard({
           ))}
         </ul>
       )}
+      <div className="mt-4 border-t border-border pt-3">
+        <LabourFormDialog
+          triggerLabel="+ Add labour"
+          triggerVariant="secondary"
+          triggerSize="sm"
+          employees={employees}
+          projects={projects}
+          presetEmployeeId={employeeId}
+        />
+      </div>
     </Card>
   )
 }
@@ -185,11 +209,15 @@ function RecentExpensesCard({
   entries,
   tz,
   locale,
+  employees,
+  projects,
 }: {
   employeeId: string
   entries: ExpenseWithRelations[]
   tz: string
   locale: string
+  employees: SelectOption[]
+  projects: SelectOption[]
 }) {
   return (
     <Card
@@ -234,6 +262,16 @@ function RecentExpensesCard({
           ))}
         </ul>
       )}
+      <div className="mt-4 border-t border-border pt-3">
+        <ExpenseFormDialog
+          triggerLabel="+ Add expense"
+          triggerVariant="secondary"
+          triggerSize="sm"
+          employees={employees}
+          projects={projects}
+          presetEmployeeId={employeeId}
+        />
+      </div>
     </Card>
   )
 }
