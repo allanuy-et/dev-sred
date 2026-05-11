@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch --env-file-if-exists=../.env src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node --env-file-if-exists=../.env dist/index.js",
     "typecheck": "tsc --noEmit",
-    "db:setup": "tsx db/setup.ts"
+    "db:setup": "tsx --env-file-if-exists=../.env db/setup.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
